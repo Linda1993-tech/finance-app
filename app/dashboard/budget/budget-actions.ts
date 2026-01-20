@@ -98,11 +98,22 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
     throw new Error('Failed to fetch transactions')
   }
 
+  type TransactionWithCategory = {
+    amount: number
+    category_id: string | null
+    categories: {
+      id: string
+      parent_id: string | null
+    } | null
+  }
+
+  const typedTransactions = (transactions || []) as unknown as TransactionWithCategory[]
+
   // Calculate spending per category (including parent categories)
   const spendingByCategory = new Map<string, number>()
   let totalSpending = 0
 
-  for (const t of transactions || []) {
+  for (const t of typedTransactions) {
     const netAmount = t.amount // Can be negative (expense) or positive (reimbursement)
     
     // Add to specific category
@@ -111,7 +122,7 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
       spendingByCategory.set(t.category_id, current + netAmount)
       
       // Also add to parent category if this is a subcategory
-      const category = t.categories as { id: string; parent_id: string | null } | null
+      const category = t.categories
       if (category?.parent_id) {
         const parentCurrent = spendingByCategory.get(category.parent_id) || 0
         spendingByCategory.set(category.parent_id, parentCurrent + netAmount)

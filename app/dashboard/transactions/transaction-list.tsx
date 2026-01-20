@@ -66,14 +66,14 @@ export function TransactionList({ transactions, categories }: Props) {
 
   // Only count transactions explicitly marked as income
   const totalIncome = transactions
-    .filter((t) => t.is_income && !t.is_transfer)
+    .filter((t: any) => t.is_income && !t.is_transfer)
     .reduce((sum, t) => sum + t.amount, 0)
 
   // Calculate net expenses (expenses - reimbursements)
   // Include all non-income, non-transfer transactions (both negative and positive)
   const totalExpense = Math.abs(
     transactions
-      .filter((t) => !t.is_income && !t.is_transfer)
+      .filter((t: any) => !t.is_income && !t.is_transfer)
       .reduce((sum, t) => sum + t.amount, 0)
   )
 
@@ -141,7 +141,7 @@ export function TransactionList({ transactions, categories }: Props) {
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
           >
-            Income ({transactions.filter((t) => t.amount > 0).length})
+            Income ({transactions.filter((t: any) => t.amount > 0).length})
           </button>
           <button
             onClick={() => handleFilterChange('expense')}
@@ -151,7 +151,7 @@ export function TransactionList({ transactions, categories }: Props) {
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
           >
-            Expenses ({transactions.filter((t) => t.amount < 0).length})
+            Expenses ({transactions.filter((t: any) => t.amount < 0).length})
           </button>
           <button
             onClick={() => handleFilterChange('uncategorized')}

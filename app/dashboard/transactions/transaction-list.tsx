@@ -55,14 +55,14 @@ export function TransactionList({ transactions, categories }: Props) {
     router.push(`?${params.toString()}`, { scroll: false })
   }
 
-  const filtered = transactions.filter((t) => {
+  const filtered = transactions.filter((t: any) => {
     if (filter === 'income') return t.amount > 0
     if (filter === 'expense') return t.amount < 0
     if (filter === 'uncategorized') return !t.category_id && !t.is_transfer && !t.is_income
     return true
   })
 
-  const uncategorizedCount = transactions.filter((t) => !t.category_id && !t.is_transfer && !t.is_income).length
+  const uncategorizedCount = transactions.filter((t: any) => !t.category_id && !t.is_transfer && !t.is_income).length
 
   // Only count transactions explicitly marked as income
   const totalIncome = transactions

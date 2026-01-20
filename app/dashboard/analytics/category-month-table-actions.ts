@@ -17,6 +17,22 @@ export type MonthlyTotal = {
   total: number
 }
 
+type TransactionWithCategory = {
+  transaction_date: string
+  amount: number
+  category_id: string | null
+  categories: {
+    id: string
+    name: string
+    icon: string | null
+    color: string | null
+    parent_id: string | null
+    parent: {
+      name: string
+    } | null
+  } | null
+}
+
 /**
  * Get expense breakdown by category per month
  */
@@ -65,9 +81,11 @@ export async function getCategoryMonthBreakdown(months: number = 12) {
     return { categoryData: [], monthlyTotals: [], months: [] }
   }
 
+  const typedTransactions = transactions as TransactionWithCategory[]
+
   // Get unique months in data
   const monthsSet = new Set<string>()
-  transactions.forEach((t) => {
+  typedTransactions.forEach((t) => {
     const month = t.transaction_date.substring(0, 7) // YYYY-MM
     monthsSet.add(month)
   })
@@ -85,7 +103,7 @@ export async function getCategoryMonthBreakdown(months: number = 12) {
     }
   >()
 
-  for (const t of transactions) {
+  for (const t of typedTransactions) {
     const category = t.categories
     const categoryId = category?.id || 'uncategorized'
     const categoryName = category?.name || 'Uncategorized'

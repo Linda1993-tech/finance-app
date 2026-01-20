@@ -193,7 +193,7 @@ export function TransactionList({ transactions, categories }: Props) {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filtered.map((transaction) => (
+              {filtered.map((transaction: any) => (
                 <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                     {new Date(transaction.transaction_date).toLocaleDateString('en-GB')}

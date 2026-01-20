@@ -114,13 +114,27 @@ export async function getCategorySpending(month?: string) {
 
   if (!transactions) return []
 
+  type TransactionWithCategory = {
+    amount: number
+    category_id: string | null
+    is_transfer: boolean
+    is_income: boolean
+    categories: {
+      name: string
+      color: string | null
+      icon: string | null
+    } | null
+  }
+
+  const typedTransactions = transactions as unknown as TransactionWithCategory[]
+
   // Group by category
   const categoryMap = new Map<
     string,
     { amount: number; color: string | null; icon: string | null; count: number }
   >()
 
-  for (const t of transactions) {
+  for (const t of typedTransactions) {
     const categoryName = t.categories?.name || 'Uncategorized'
     const existing = categoryMap.get(categoryName) || {
       amount: 0,

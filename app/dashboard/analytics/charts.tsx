@@ -52,7 +52,7 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="monthLabel" />
         <YAxis />
-        <Tooltip formatter={(value: number) => `€${value.toFixed(2)}`} />
+        <Tooltip formatter={(value: number | string) => `€${typeof value === 'number' ? value.toFixed(2) : value}`} />
         <Legend />
         <Line
           type="monotone"
@@ -99,7 +99,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
             <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(value: number) => `€${value.toFixed(2)}`} />
+        <Tooltip formatter={(value: number | string) => `€${typeof value === 'number' ? value.toFixed(2) : value}`} />
       </PieChart>
     </ResponsiveContainer>
   )
@@ -123,7 +123,7 @@ export function TopCategoriesChart({ data, limit = 10 }: TopCategoriesChartProps
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis type="number" />
         <YAxis dataKey="category" type="category" width={150} />
-        <Tooltip formatter={(value: number) => `€${value.toFixed(2)}`} />
+        <Tooltip formatter={(value: number | string) => `€${typeof value === 'number' ? value.toFixed(2) : value}`} />
         <Bar dataKey="amount" fill="#3B82F6">
           {topData.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />

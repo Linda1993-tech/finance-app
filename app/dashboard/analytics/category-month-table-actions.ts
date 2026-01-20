@@ -81,7 +81,7 @@ export async function getCategoryMonthBreakdown(months: number = 12) {
     return { categoryData: [], monthlyTotals: [], months: [] }
   }
 
-  const typedTransactions = transactions as TransactionWithCategory[]
+  const typedTransactions = transactions as unknown as TransactionWithCategory[]
 
   // Get unique months in data
   const monthsSet = new Set<string>()

@@ -45,8 +45,8 @@ async function detectRecurring(): Promise<RecurringExpense[]> {
     if (!t.learning_key) continue
 
     const existing = grouped.get(t.learning_key) || {
-      amounts: [],
-      dates: [],
+      amounts: [] as number[],
+      dates: [] as string[],
       description: t.description,
       category: t.categories,
     }

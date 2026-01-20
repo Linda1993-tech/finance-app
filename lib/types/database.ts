@@ -29,7 +29,6 @@ export type Transaction = {
   is_income: boolean
   exclude_from_learning: boolean
   disable_auto_rules: boolean
-  is_transfer: boolean
   import_source: string | null
   import_date: string
   original_row_data: Record<string, any> | null

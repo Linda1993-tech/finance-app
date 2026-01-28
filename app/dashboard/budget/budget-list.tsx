@@ -39,6 +39,29 @@ export function BudgetList({ budgetStatuses, viewMode = 'monthly' }: Props) {
   const subcategoryBudgets = budgetStatuses.filter((s) => s.budget.category?.parent_id)
   const overallBudget = budgetStatuses.find((s) => !s.budget.category)
 
+  // Sort function: prioritize critical budgets
+  const sortByUrgency = (a: BudgetStatus, b: BudgetStatus) => {
+    // Over budget (>100%) - most urgent, sort by how much over (descending)
+    if (a.percentage > 100 && b.percentage > 100) {
+      return b.percentage - a.percentage
+    }
+    if (a.percentage > 100) return -1
+    if (b.percentage > 100) return 1
+    
+    // Warning (80-100%) - moderately urgent, sort by percentage (descending)
+    if (a.percentage > 80 && b.percentage > 80) {
+      return b.percentage - a.percentage
+    }
+    if (a.percentage > 80) return -1
+    if (b.percentage > 80) return 1
+    
+    // Safe (<80%) - least urgent, sort by percentage (descending - highest usage first)
+    return b.percentage - a.percentage
+  }
+
+  // Sort parent budgets by urgency
+  const sortedParentBudgets = [...parentBudgets].sort(sortByUrgency)
+
   // Build display list maintaining hierarchy
   const displayItems: { status: BudgetStatus; isSubcategory: boolean }[] = []
 
@@ -47,24 +70,24 @@ export function BudgetList({ budgetStatuses, viewMode = 'monthly' }: Props) {
     displayItems.push({ status: overallBudget, isSubcategory: false })
   }
 
-  // Add each parent with its subcategories
-  for (const parent of parentBudgets) {
+  // Add each parent with its subcategories (subcategories also sorted by urgency)
+  for (const parent of sortedParentBudgets) {
     displayItems.push({ status: parent, isSubcategory: false })
     
-    // Add subcategories belonging to this parent
-    const subs = subcategoryBudgets.filter(
-      (sub) => sub.budget.category?.parent_id === parent.budget.category?.id
-    )
+    // Add subcategories belonging to this parent, sorted by urgency
+    const subs = subcategoryBudgets
+      .filter((sub) => sub.budget.category?.parent_id === parent.budget.category?.id)
+      .sort(sortByUrgency)
     for (const sub of subs) {
       displayItems.push({ status: sub, isSubcategory: true })
     }
   }
 
-  // Add orphan subcategories (whose parent has no budget set)
-  const parentIdsWithBudgets = new Set(parentBudgets.map((p) => p.budget.category?.id))
-  const orphanSubs = subcategoryBudgets.filter(
-    (sub) => !parentIdsWithBudgets.has(sub.budget.category?.parent_id || '')
-  )
+  // Add orphan subcategories (whose parent has no budget set), sorted by urgency
+  const parentIdsWithBudgets = new Set(sortedParentBudgets.map((p) => p.budget.category?.id))
+  const orphanSubs = subcategoryBudgets
+    .filter((sub) => !parentIdsWithBudgets.has(sub.budget.category?.parent_id || ''))
+    .sort(sortByUrgency)
   for (const sub of orphanSubs) {
     displayItems.push({ status: sub, isSubcategory: false })
   }
@@ -99,16 +122,31 @@ function renderBudgetItem(
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {isSubcategory && <span className="text-gray-400">↳</span>}
+          {/* Urgency indicator */}
+          {isOverBudget && <span className="text-2xl">🚨</span>}
+          {isWarning && !isOverBudget && <span className="text-2xl">⚠️</span>}
           {status.budget.category?.icon && (
             <span className="text-2xl">{status.budget.category.icon}</span>
           )}
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              {status.budget.category?.name || 'Overall Budget'}
-              {!isSubcategory && status.budget.category && (
-                <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">(Total)</span>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                {status.budget.category?.name || 'Overall Budget'}
+                {!isSubcategory && status.budget.category && (
+                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">(Total)</span>
+                )}
+              </h3>
+              {isOverBudget && (
+                <span className="text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-full font-medium">
+                  OVER BUDGET
+                </span>
               )}
-            </h3>
+              {isWarning && !isOverBudget && (
+                <span className="text-xs px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 rounded-full font-medium">
+                  NEEDS ATTENTION
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               €{status.spent.toFixed(2)} of €{status.budget.amount.toFixed(2)}
               {viewMode === 'yearly' && (

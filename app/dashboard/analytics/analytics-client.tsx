@@ -85,10 +85,23 @@ export function AnalyticsClient({
   const avgDailyExpense = avgMonthlyExpense / 30
   const avgWeeklyExpense = avgMonthlyExpense / 4.33
 
+  // Generate available months from actual data
+  const availableMonths = initialMonthlyTrends.map((m) => ({
+    value: m.month,
+    label: new Date(m.month + '-01').toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    }),
+  })).reverse() // Most recent first
+
   return (
     <>
       {/* Filters */}
-      <AnalyticsFilters categories={categories} onFilterChange={setFilters} />
+      <AnalyticsFilters 
+        categories={categories} 
+        availableMonths={availableMonths}
+        onFilterChange={setFilters} 
+      />
 
       {/* Summary Cards with Comparisons */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

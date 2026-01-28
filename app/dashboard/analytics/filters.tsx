@@ -5,6 +5,7 @@ import type { Category } from '@/lib/types/database'
 
 type FilterProps = {
   categories: Category[]
+  availableMonths?: { value: string; label: string }[]
   onFilterChange: (filters: AnalyticsFilters) => void
 }
 
@@ -14,7 +15,7 @@ export type AnalyticsFilters = {
   specificMonth?: string | null // YYYY-MM format
 }
 
-export function AnalyticsFilters({ categories, onFilterChange }: FilterProps) {
+export function AnalyticsFilters({ categories, availableMonths = [], onFilterChange }: FilterProps) {
   const [dateRange, setDateRange] = useState<'3' | '6' | '12' | 'all' | 'custom'>('6')
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [specificMonth, setSpecificMonth] = useState<string | null>(null)
@@ -41,16 +42,6 @@ export function AnalyticsFilters({ categories, onFilterChange }: FilterProps) {
     setDateRange('custom')
     onFilterChange({ dateRange: 'custom', categoryId, specificMonth: newMonth })
   }
-
-  // Generate last 12 months for dropdown
-  const availableMonths = Array.from({ length: 12 }, (_, i) => {
-    const date = new Date()
-    date.setMonth(date.getMonth() - i)
-    return {
-      value: date.toISOString().substring(0, 7),
-      label: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    }
-  })
 
   // Group categories
   const parentCategories = categories.filter((c) => !c.parent_id)

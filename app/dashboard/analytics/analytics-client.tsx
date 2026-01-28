@@ -27,16 +27,20 @@ export function AnalyticsClient({
   categories,
   currentMonth,
 }: Props) {
-  const [filters, setFilters] = useState<Filters>({ dateRange: '6', categoryId: null })
+  const [filters, setFilters] = useState<Filters>({ dateRange: '6', categoryId: null, specificMonth: null })
   const [monthlyData, setMonthlyData] = useState(initialMonthlyTrends)
   const [categoryData, setCategoryData] = useState(initialCategorySpending)
   const [currentMonthData, setCurrentMonthData] = useState(initialCurrentMonthSpending)
 
   // Apply filters
   useEffect(() => {
-    // Filter monthly trends by date range
+    // Filter monthly trends by date range or specific month
     let filteredMonthly = initialMonthlyTrends
-    if (filters.dateRange !== 'all') {
+    
+    if (filters.specificMonth) {
+      // Show only the specific month
+      filteredMonthly = filteredMonthly.filter(m => m.month === filters.specificMonth)
+    } else if (filters.dateRange !== 'all' && filters.dateRange !== 'custom') {
       const months = parseInt(filters.dateRange)
       filteredMonthly = filteredMonthly.slice(-months)
     }

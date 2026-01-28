@@ -58,6 +58,30 @@ export type Budget = {
   updated_at: string
 }
 
+export type SavingsAccount = {
+  id: string
+  user_id: string
+  name: string
+  account_type: 'dutch' | 'spanish' | 'other'
+  currency: string
+  color: string | null
+  icon: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SavingsEntry = {
+  id: string
+  user_id: string
+  account_id: string
+  entry_date: string
+  entry_type: 'balance' | 'deposit' | 'withdrawal'
+  amount: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Form types for creating/updating
 export type CategoryInput = {
   name: string

@@ -1,0 +1,338 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+import type { SavingsAccount, SavingsEntry } from '@/lib/types/database'
+
+/**
+ * Get all savings accounts for the current user
+ */
+export async function getSavingsAccounts(): Promise<SavingsAccount[]> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  const { data, error } = await supabase
+    .from('savings_accounts')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching savings accounts:', error)
+    throw new Error('Failed to fetch savings accounts')
+  }
+
+  return data || []
+}
+
+/**
+ * Create a new savings account
+ */
+export async function createSavingsAccount(input: {
+  name: string
+  account_type: 'dutch' | 'spanish' | 'other'
+  currency?: string
+  color?: string
+  icon?: string
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const { error } = await supabase.from('savings_accounts').insert({
+    user_id: user.id,
+    name: input.name,
+    account_type: input.account_type,
+    currency: input.currency || 'EUR',
+    color: input.color || null,
+    icon: input.icon || null,
+  })
+
+  if (error) {
+    console.error('Error creating savings account:', error)
+    return { success: false, error: 'Failed to create savings account' }
+  }
+
+  revalidatePath('/dashboard/savings')
+  return { success: true }
+}
+
+/**
+ * Update a savings account
+ */
+export async function updateSavingsAccount(
+  accountId: string,
+  input: {
+    name?: string
+    color?: string
+    icon?: string
+  }
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const { error } = await supabase
+    .from('savings_accounts')
+    .update({
+      ...input,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', accountId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Error updating savings account:', error)
+    return { success: false, error: 'Failed to update savings account' }
+  }
+
+  revalidatePath('/dashboard/savings')
+  return { success: true }
+}
+
+/**
+ * Delete a savings account
+ */
+export async function deleteSavingsAccount(accountId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const { error } = await supabase
+    .from('savings_accounts')
+    .delete()
+    .eq('id', accountId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Error deleting savings account:', error)
+    return { success: false, error: 'Failed to delete savings account' }
+  }
+
+  revalidatePath('/dashboard/savings')
+  return { success: true }
+}
+
+/**
+ * Get all entries for a savings account
+ */
+export async function getSavingsEntries(accountId: string): Promise<SavingsEntry[]> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  const { data, error } = await supabase
+    .from('savings_entries')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('account_id', accountId)
+    .order('entry_date', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching savings entries:', error)
+    throw new Error('Failed to fetch savings entries')
+  }
+
+  return data || []
+}
+
+/**
+ * Get all entries for all accounts (for summary views)
+ */
+export async function getAllSavingsEntries(): Promise<(SavingsEntry & { account: SavingsAccount })[]> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  const { data, error } = await supabase
+    .from('savings_entries')
+    .select('*, account:savings_accounts(*)')
+    .eq('user_id', user.id)
+    .order('entry_date', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching all savings entries:', error)
+    throw new Error('Failed to fetch savings entries')
+  }
+
+  return (data as any) || []
+}
+
+/**
+ * Add a savings entry (balance snapshot, deposit, or withdrawal)
+ */
+export async function addSavingsEntry(input: {
+  account_id: string
+  entry_date: string
+  entry_type: 'balance' | 'deposit' | 'withdrawal'
+  amount: number
+  notes?: string
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  if (input.amount <= 0) {
+    return { success: false, error: 'Amount must be greater than 0' }
+  }
+
+  const { error } = await supabase.from('savings_entries').insert({
+    user_id: user.id,
+    account_id: input.account_id,
+    entry_date: input.entry_date,
+    entry_type: input.entry_type,
+    amount: input.amount,
+    notes: input.notes || null,
+  })
+
+  if (error) {
+    console.error('Error adding savings entry:', error)
+    return { success: false, error: 'Failed to add savings entry' }
+  }
+
+  revalidatePath('/dashboard/savings')
+  return { success: true }
+}
+
+/**
+ * Delete a savings entry
+ */
+export async function deleteSavingsEntry(entryId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const { error } = await supabase
+    .from('savings_entries')
+    .delete()
+    .eq('id', entryId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Error deleting savings entry:', error)
+    return { success: false, error: 'Failed to delete savings entry' }
+  }
+
+  revalidatePath('/dashboard/savings')
+  return { success: true }
+}
+
+/**
+ * Calculate interest and statistics for an account
+ */
+export type SavingsStats = {
+  currentBalance: number
+  totalDeposits: number
+  totalWithdrawals: number
+  totalInterest: number
+  interestRate: number // annualized percentage
+  entries: SavingsEntry[]
+}
+
+export async function calculateSavingsStats(accountId: string): Promise<SavingsStats> {
+  const entries = await getSavingsEntries(accountId)
+
+  if (entries.length === 0) {
+    return {
+      currentBalance: 0,
+      totalDeposits: 0,
+      totalWithdrawals: 0,
+      totalInterest: 0,
+      interestRate: 0,
+      entries: [],
+    }
+  }
+
+  // Get the most recent balance snapshot
+  const balanceEntries = entries.filter((e) => e.entry_type === 'balance')
+  const currentBalance = balanceEntries.length > 0 ? balanceEntries[balanceEntries.length - 1].amount : 0
+
+  // Calculate total deposits and withdrawals
+  const totalDeposits = entries
+    .filter((e) => e.entry_type === 'deposit')
+    .reduce((sum, e) => sum + e.amount, 0)
+
+  const totalWithdrawals = entries
+    .filter((e) => e.entry_type === 'withdrawal')
+    .reduce((sum, e) => sum + e.amount, 0)
+
+  // Calculate interest
+  // Interest = Current Balance - (Starting Balance + Deposits - Withdrawals)
+  const startingBalance = balanceEntries.length > 0 ? balanceEntries[0].amount : 0
+  const expectedBalance = startingBalance + totalDeposits - totalWithdrawals
+  const totalInterest = currentBalance - expectedBalance
+
+  // Calculate annualized interest rate
+  let interestRate = 0
+  if (balanceEntries.length >= 2 && startingBalance > 0) {
+    const firstEntry = balanceEntries[0]
+    const lastEntry = balanceEntries[balanceEntries.length - 1]
+    const daysDiff = Math.max(
+      1,
+      (new Date(lastEntry.entry_date).getTime() - new Date(firstEntry.entry_date).getTime()) / (1000 * 60 * 60 * 24)
+    )
+    const yearFraction = daysDiff / 365
+    const avgBalance = (startingBalance + currentBalance) / 2
+    if (avgBalance > 0 && yearFraction > 0) {
+      interestRate = (totalInterest / avgBalance / yearFraction) * 100
+    }
+  }
+
+  return {
+    currentBalance,
+    totalDeposits,
+    totalWithdrawals,
+    totalInterest,
+    interestRate,
+    entries,
+  }
+}

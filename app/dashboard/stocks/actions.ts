@@ -334,72 +334,97 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
   const apiKey = process.env.ALPHA_VANTAGE_API_KEY || 'VL6OUC9I8JDD86QN' // Fallback to hardcoded key
 
   for (const ticker of tickers) {
+    // Try multiple ticker formats for international stocks
     const formattedTicker = formatTickerForYahoo(ticker) // Format ticker (e.g., AGN -> AGN.AS)
+    const tickersToTry = [
+      ticker, // Try original first (e.g., AGN)
+      formattedTicker, // Try with suffix (e.g., AGN.AS)
+      formattedTicker.replace('.AS', '.AMS'), // Try Alpha Vantage Amsterdam format
+    ]
     
-    try {
-      // Fetch company overview from Alpha Vantage (includes price, dividend, and company info)
-      const response = await fetch(
-        `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${formattedTicker}&apikey=${apiKey}`,
-        {
-          next: { revalidate: 300 }, // Cache for 5 minutes
-        }
-      )
-
-      console.log(`Alpha Vantage API Response status for ${formattedTicker}:`, response.status)
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log(`Alpha Vantage API Response for ${formattedTicker}:`, JSON.stringify(data).substring(0, 500))
+    let successfulData = null
+    
+    for (const tryTicker of tickersToTry) {
+      try {
+        console.log(`Trying Alpha Vantage with ticker: ${tryTicker}`)
         
-        // Check for API errors
-        if (data['Error Message'] || data['Note']) {
-          console.error(`Alpha Vantage error for ${formattedTicker}:`, data['Error Message'] || data['Note'])
-          continue
-        }
-
-        // Also fetch the current price from GLOBAL_QUOTE
-        const quoteResponse = await fetch(
-          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${formattedTicker}&apikey=${apiKey}`,
+        // Fetch company overview from Alpha Vantage (includes price, dividend, and company info)
+        const response = await fetch(
+          `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${tryTicker}&apikey=${apiKey}`,
           {
-            next: { revalidate: 300 },
+            next: { revalidate: 300 }, // Cache for 5 minutes
           }
         )
 
-        let currentPrice = null
-        if (quoteResponse.ok) {
-          const quoteData = await quoteResponse.json()
-          currentPrice = parseFloat(quoteData['Global Quote']?.['05. price'])
-        }
+        console.log(`Alpha Vantage API Response status for ${tryTicker}:`, response.status)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log(`Alpha Vantage API Response for ${tryTicker}:`, JSON.stringify(data).substring(0, 500))
+          
+          // Check for API errors
+          if (data['Error Message'] || data['Note']) {
+            console.log(`Alpha Vantage error for ${tryTicker}:`, data['Error Message'] || data['Note'])
+            continue // Try next ticker format
+          }
 
-        // Extract data from OVERVIEW
-        const name = data['Name']
-        const dividendYield = parseFloat(data['DividendYield']) // Already in decimal (0.03 = 3%)
-        const dividendPerShare = parseFloat(data['DividendPerShare'])
-        
-        // Use current price if available, otherwise use 50-day moving average as fallback
-        const price = currentPrice || parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage'])
-        
-        console.log(`Extracted data for ${ticker}:`, { price, name, dividendYield, dividendPerShare })
-        
-        if (price && name) {
-          quotes[ticker] = {
-            price,
-            name,
-            dividendYield: dividendYield ? dividendYield * 100 : undefined, // Convert to percentage
-            trailingAnnualDividend: dividendPerShare || undefined,
+          // Also fetch the current price from GLOBAL_QUOTE
+          const quoteResponse = await fetch(
+            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${tryTicker}&apikey=${apiKey}`,
+            {
+              next: { revalidate: 300 },
+            }
+          )
+
+          let currentPrice = null
+          if (quoteResponse.ok) {
+            const quoteData = await quoteResponse.json()
+            console.log(`Global Quote response for ${tryTicker}:`, JSON.stringify(quoteData).substring(0, 300))
+            currentPrice = parseFloat(quoteData['Global Quote']?.['05. price'])
+          }
+
+          // Extract data from OVERVIEW
+          const name = data['Name']
+          const dividendYield = parseFloat(data['DividendYield']) // Already in decimal (0.03 = 3%)
+          const dividendPerShare = parseFloat(data['DividendPerShare'])
+          
+          // Use current price if available, otherwise use 50-day moving average as fallback
+          const price = currentPrice || parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage'])
+          
+          console.log(`Extracted data for ${ticker} using ${tryTicker}:`, { price, name, dividendYield, dividendPerShare })
+          
+          if (price && name) {
+            successfulData = {
+              price,
+              name,
+              dividendYield: dividendYield ? dividendYield * 100 : undefined, // Convert to percentage
+              trailingAnnualDividend: dividendPerShare || undefined,
+            }
+            console.log(`✅ Successfully fetched data for ${ticker} using ${tryTicker}`)
+            break // Found valid data, stop trying other formats
+          } else {
+            console.warn(`Incomplete data for ${tryTicker} - trying next format`)
           }
         } else {
-          console.warn(`Incomplete data for ${formattedTicker}`)
+          console.log(`API returned status ${response.status} for ${tryTicker}`)
         }
-      } else {
-        console.error(`API returned status ${response.status} for ${formattedTicker}`)
+      } catch (error) {
+        console.log(`Error with ${tryTicker}:`, error)
       }
-    } catch (error) {
-      console.error(`Error fetching quote for ${ticker} (formatted as ${formattedTicker}):`, error)
+      
+      // Small delay between format attempts
+      await new Promise(resolve => setTimeout(resolve, 2000))
+    }
+    
+    // If we found valid data, add it to quotes
+    if (successfulData) {
+      quotes[ticker] = successfulData
+    } else {
+      console.error(`❌ Failed to fetch data for ${ticker} with any ticker format`)
     }
 
-    // Add a small delay to avoid hitting rate limits (5 requests per minute for free tier)
-    await new Promise(resolve => setTimeout(resolve, 12000)) // 12 second delay = 5 requests/minute
+    // Add a delay to avoid hitting rate limits (5 requests per minute for free tier)
+    await new Promise(resolve => setTimeout(resolve, 12000))
   }
 
   return quotes

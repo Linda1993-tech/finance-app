@@ -5,9 +5,9 @@ import { revalidatePath } from 'next/cache'
 import type { SavingsAccount, SavingsEntry } from '@/lib/types/database'
 
 /**
- * Get all savings accounts for the current user
+ * Get all pension accounts for the current user
  */
-export async function getSavingsAccounts(): Promise<SavingsAccount[]> {
+export async function getPensionAccounts(): Promise<SavingsAccount[]> {
   const supabase = await createClient()
 
   const {
@@ -34,9 +34,9 @@ export async function getSavingsAccounts(): Promise<SavingsAccount[]> {
 }
 
 /**
- * Create a new savings account
+ * Create a new pension account
  */
-export async function createSavingsAccount(input: {
+export async function createPensionAccount(input: {
   name: string
   account_type: 'dutch' | 'spanish' | 'other'
   currency?: string
@@ -83,7 +83,7 @@ export async function createSavingsAccount(input: {
 /**
  * Delete a pension account
  */
-export async function deleteSavingsAccount(accountId: string): Promise<{ success: boolean; error?: string }> {
+export async function deletePensionAccount(accountId: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Not authenticated' }
@@ -136,35 +136,6 @@ export async function updateSavingsAccount(
   if (error) {
     console.error('Error updating savings account:', error)
     return { success: false, error: 'Failed to update savings account' }
-  }
-
-  revalidatePath('/dashboard/pension')
-  return { success: true }
-}
-
-/**
- * Delete a savings account
- */
-export async function deleteSavingsAccount(accountId: string): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { success: false, error: 'Not authenticated' }
-  }
-
-  const { error } = await supabase
-    .from('savings_accounts')
-    .delete()
-    .eq('id', accountId)
-    .eq('user_id', user.id)
-
-  if (error) {
-    console.error('Error deleting savings account:', error)
-    return { success: false, error: 'Failed to delete savings account' }
   }
 
   revalidatePath('/dashboard/pension')

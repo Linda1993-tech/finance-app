@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createSavingsAccount } from './actions'
+import { createPensionAccount } from './actions'
 
 type Props = {
   onSuccess: () => void
@@ -31,7 +31,7 @@ export function CreateAccountForm({ onSuccess }: Props) {
     setSubmitting(true)
     setError('')
 
-    const result = await createSavingsAccount({
+    const result = await createPensionAccount({
       name: name.trim(),
       account_type: accountType,
       icon,

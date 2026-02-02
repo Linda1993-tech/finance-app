@@ -1,8 +1,8 @@
-import { getSavingsAccounts } from './actions'
+import { getPensionAccounts } from './actions'
 import { SavingsClient } from './savings-client'
 
 export default async function PensionPage() {
-  const accounts = await getSavingsAccounts()
+  const accounts = await getPensionAccounts()
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

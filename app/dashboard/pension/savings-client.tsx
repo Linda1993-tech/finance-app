@@ -6,7 +6,7 @@ import { CreateAccountForm } from './create-account-form'
 import { AccountCard } from './account-card'
 import { AddEntryForm } from './add-entry-form'
 import { ImportTransfers } from './import-transfers'
-import { calculateSavingsStats, type SavingsStats } from './actions'
+import { calculateSavingsStats, type SavingsStats, deletePensionAccount } from './actions'
 import { formatEuro } from '@/lib/utils/currency-format'
 
 type Props = {
@@ -221,6 +221,10 @@ export function SavingsClient({ initialAccounts }: Props) {
               account={account}
               stats={accountStats[account.id]}
               onAddEntry={() => handleAddEntry(account)}
+              onDelete={async (id) => {
+                await deletePensionAccount(id)
+                window.location.reload()
+              }}
             />
           ))}
         </div>

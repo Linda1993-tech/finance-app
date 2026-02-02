@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { categorizeTransaction, type CategorizeOption } from './categorization-actions'
-import type { Category } from '@/lib/types/database'
+import type { Category, SavingsAccount } from '@/lib/types/database'
+import { getSavingsAccounts } from '../savings/actions'
 
 type Transaction = {
   id: string
@@ -24,6 +25,24 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
   const [isTransfer, setIsTransfer] = useState(false)
   const [isIncome, setIsIncome] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [savingsAccounts, setSavingsAccounts] = useState<SavingsAccount[]>([])
+  const [selectedSavingsAccount, setSelectedSavingsAccount] = useState<string>('')
+  const [savingsEntryType, setSavingsEntryType] = useState<'deposit' | 'withdrawal'>(
+    transaction.amount > 0 ? 'deposit' : 'withdrawal'
+  )
+
+  // Load savings accounts when modal opens
+  useEffect(() => {
+    async function loadSavingsAccounts() {
+      try {
+        const accounts = await getSavingsAccounts()
+        setSavingsAccounts(accounts)
+      } catch (error) {
+        console.error('Failed to load savings accounts:', error)
+      }
+    }
+    loadSavingsAccounts()
+  }, [])
 
   // Group categories by parent
   const parentCategories = categories.filter((c) => !c.parent_id)
@@ -37,7 +56,17 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
 
     setIsSubmitting(true)
     try {
-      await categorizeTransaction(transaction.id, selectedCategory, option, isTransfer, isIncome)
+      await categorizeTransaction(
+        transaction.id,
+        selectedCategory,
+        option,
+        isTransfer,
+        isIncome,
+        // Pass savings account info if selected
+        selectedSavingsAccount || undefined,
+        savingsEntryType,
+        transaction.transaction_date
+      )
       onClose()
       window.location.reload()
     } catch (error) {
@@ -115,7 +144,7 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
           </div>
 
           {/* Transfer Checkbox */}
-          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-lg space-y-4">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -133,6 +162,57 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
                 </div>
               </div>
             </label>
+
+            {/* Savings Account Selection (only shown when transfer is checked) */}
+            {isTransfer && savingsAccounts.length > 0 && (
+              <div className="ml-7 space-y-3 border-t border-amber-200 dark:border-amber-800 pt-3">
+                <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                  💰 Link to Savings Account (optional)
+                </label>
+                <select
+                  value={selectedSavingsAccount}
+                  onChange={(e) => setSelectedSavingsAccount(e.target.value)}
+                  className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">-- Don't link to savings --</option>
+                  {savingsAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.icon} {account.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedSavingsAccount && (
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="entry-type"
+                        value="deposit"
+                        checked={savingsEntryType === 'deposit'}
+                        onChange={() => setSavingsEntryType('deposit')}
+                        className="text-green-600"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-white">
+                        ➕ Deposit (into savings)
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="entry-type"
+                        value="withdrawal"
+                        checked={savingsEntryType === 'withdrawal'}
+                        onChange={() => setSavingsEntryType('withdrawal')}
+                        className="text-red-600"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-white">
+                        ➖ Withdrawal (from savings)
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Income Checkbox (for positive amounts) */}

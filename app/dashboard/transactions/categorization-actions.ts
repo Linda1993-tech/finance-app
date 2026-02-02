@@ -17,7 +17,10 @@ export async function categorizeTransaction(
   categoryId: string | null,
   option: CategorizeOption,
   isTransfer: boolean = false,
-  isIncome: boolean = false
+  isIncome: boolean = false,
+  savingsAccountId?: string,
+  savingsEntryType?: 'deposit' | 'withdrawal',
+  transactionDate?: string
 ) {
   const supabase = await createClient()
 
@@ -32,7 +35,7 @@ export async function categorizeTransaction(
   // Get the transaction first
   const { data: transaction, error: fetchError } = await supabase
     .from('transactions')
-    .select('learning_key, user_id')
+    .select('learning_key, user_id, amount, description, transaction_date')
     .eq('id', transactionId)
     .single()
 
@@ -80,7 +83,26 @@ export async function categorizeTransaction(
     )
   }
 
+  // Link to savings account if selected
+  if (isTransfer && savingsAccountId && savingsEntryType) {
+    const { error: savingsError } = await supabase.from('savings_entries').insert({
+      user_id: user.id,
+      account_id: savingsAccountId,
+      transaction_id: transactionId,
+      entry_date: transactionDate || transaction.transaction_date,
+      entry_type: savingsEntryType,
+      amount: Math.abs(transaction.amount),
+      notes: `Linked from transaction: ${transaction.description}`,
+    })
+
+    if (savingsError) {
+      console.error('Failed to create savings entry:', savingsError)
+      // Don't throw - the transaction was still categorized successfully
+    }
+  }
+
   revalidatePath('/dashboard/transactions')
+  revalidatePath('/dashboard/savings')
 }
 
 /**

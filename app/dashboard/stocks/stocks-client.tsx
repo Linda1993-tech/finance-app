@@ -7,7 +7,7 @@ import { AddStockForm } from './add-stock-form'
 import { AddTransactionForm } from './add-transaction-form'
 import { HoldingCard } from './holding-card'
 import { HoldingsTable } from './holdings-table'
-import { fetchStockPrices } from './actions'
+import { fetchStockQuotes, updateStockName } from './actions'
 
 type Props = {
   initialStocks: Stock[]
@@ -29,14 +29,33 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
     
     try {
       const tickers = initialStocks.map((s) => s.ticker)
-      console.log('Fetching prices for tickers:', tickers)
-      const prices = await fetchStockPrices(tickers)
-      console.log('Received prices:', prices)
+      console.log('Fetching quotes for tickers:', tickers)
+      const quotes = await fetchStockQuotes(tickers)
+      console.log('Received quotes:', quotes)
+      
+      // Update prices
+      const prices: Record<string, number> = {}
+      Object.entries(quotes).forEach(([ticker, quote]) => {
+        prices[ticker] = quote.price
+      })
       setCurrentPrices(prices)
       
+      // Update stock names in database if they've changed
+      let namesUpdated = false
+      for (const [ticker, quote] of Object.entries(quotes)) {
+        const stock = initialStocks.find((s) => s.ticker === ticker)
+        if (stock && stock.name !== quote.name) {
+          await updateStockName(stock.id, quote.name)
+          namesUpdated = true
+        }
+      }
+      
       // Show alert if no prices were fetched
-      if (Object.keys(prices).length === 0 && tickers.length > 0) {
+      if (Object.keys(quotes).length === 0 && tickers.length > 0) {
         alert('⚠️ Koersen niet gevonden. Zorg dat je de juiste ticker gebruikt (bijv. AGN.AS voor Aegon Amsterdam)')
+      } else if (namesUpdated) {
+        // Reload to show updated names
+        window.location.reload()
       }
     } catch (error) {
       console.error('Error fetching stock prices:', error)

@@ -81,6 +81,31 @@ export async function updateStock(
   return { success: true }
 }
 
+export async function updateStockName(
+  id: string,
+  name: string
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error } = await supabase
+    .from('stocks')
+    .update({
+      name,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Error updating stock name:', error)
+    return { success: false, error: error.message }
+  }
+  revalidatePath('/dashboard/stocks')
+  return { success: true }
+}
+
 export async function deleteStock(id: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -262,6 +287,11 @@ export async function calculatePortfolioStats(currentPrices: Record<string, numb
 
 // ============== STOCK PRICES ==============
 
+export type StockQuote = {
+  price: number
+  name: string
+}
+
 export async function fetchStockPrices(tickers: string[]): Promise<Record<string, number>> {
   const prices: Record<string, number> = {}
 
@@ -294,4 +324,43 @@ export async function fetchStockPrices(tickers: string[]): Promise<Record<string
   }
 
   return prices
+}
+
+export async function fetchStockQuotes(tickers: string[]): Promise<Record<string, StockQuote>> {
+  const quotes: Record<string, StockQuote> = {}
+
+  for (const ticker of tickers) {
+    try {
+      const response = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+          next: { revalidate: 300 }, // Cache for 5 minutes
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        const result = data.chart?.result?.[0]
+
+        if (result?.meta) {
+          const currentPrice = result.meta.regularMarketPrice || result.meta.previousClose
+          const companyName = result.meta.shortName || result.meta.longName || ticker
+          
+          if (currentPrice) {
+            quotes[ticker] = {
+              price: currentPrice,
+              name: companyName,
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching quote for ${ticker}:`, error)
+    }
+  }
+
+  return quotes
 }

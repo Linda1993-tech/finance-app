@@ -120,6 +120,15 @@ export type StockTransaction = {
   updated_at: string
 }
 
+export type UserPreferences = {
+  id: string
+  user_id: string
+  current_account_starting_balance: number
+  current_account_starting_date: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Form types for creating/updating
 export type CategoryInput = {
   name: string

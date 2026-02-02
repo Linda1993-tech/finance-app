@@ -103,18 +103,28 @@ export async function getWealthOverview(): Promise<WealthOverview> {
     }
   }
 
+  // Get user preferences for starting balance
+  const { data: preferences } = await supabase
+    .from('user_preferences')
+    .select('current_account_starting_balance')
+    .eq('user_id', user.id)
+    .single()
+
+  const startingBalance = preferences?.current_account_starting_balance || 0
+
   // Calculate current account balance from transactions
   const { data: transactions } = await supabase
     .from('transactions')
     .select('amount, is_transfer')
     .eq('user_id', user.id)
 
-  let currentAccount = 0
+  let currentAccount = startingBalance
   if (transactions) {
-    // Sum all non-transfer transactions
-    currentAccount = transactions
+    // Add all non-transfer transactions to starting balance
+    const transactionsTotal = transactions
       .filter((t) => !t.is_transfer)
       .reduce((sum, t) => sum + t.amount, 0)
+    currentAccount = startingBalance + transactionsTotal
   }
 
   const totalNetWorth = totalSavings + totalPension + totalStocks + currentAccount

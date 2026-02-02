@@ -95,7 +95,7 @@ export function HoldingsTable({ stocks, currentPrices, onUpdatePrice }: Props) {
 
                 {/* Aantal */}
                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                  {formatNumber(stock.quantity, 2)}
+                  {stock.quantity % 1 === 0 ? stock.quantity.toFixed(0) : formatNumber(stock.quantity, 2)}
                 </td>
 
                 {/* Ø Koers */}

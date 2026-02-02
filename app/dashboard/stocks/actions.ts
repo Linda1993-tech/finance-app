@@ -6,6 +6,9 @@ import type { Stock, StockTransaction } from '@/lib/types/database'
 import { formatTickerForYahoo } from '@/lib/utils/ticker-formatter'
 import yahooFinance from 'yahoo-finance2'
 
+// Disable validation for development
+yahooFinance.setGlobalConfig({ validation: { logErrors: false } })
+
 // ============== STOCKS (Holdings) ==============
 
 export async function getStocks() {

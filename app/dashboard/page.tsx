@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from './actions'
+import { getWealthOverview } from './wealth-actions'
+import { WealthOverviewCard } from './wealth-overview'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -12,6 +14,8 @@ export default async function DashboardPage() {
   if (!user) {
     redirect('/login')
   }
+
+  const wealth = await getWealthOverview()
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -39,6 +43,11 @@ export default async function DashboardPage() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Wealth Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <WealthOverviewCard wealth={wealth} />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {/* Quick Actions */}
           <a

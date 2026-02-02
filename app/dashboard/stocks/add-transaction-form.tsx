@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createStockTransaction } from './actions'
+import { formatTickerForYahoo, getDisplayTicker } from '@/lib/utils/ticker-formatter'
 
 type Props = {
   onClose: () => void
@@ -26,6 +27,9 @@ export function AddTransactionForm({ onClose }: Props) {
     setIsSubmitting(true)
     setError(null)
 
+    // Format ticker for Yahoo Finance (auto-add exchange suffix)
+    const formattedTicker = formatTickerForYahoo(ticker.trim())
+
     // Calculate total amount
     let totalAmount = 0
     if (transactionType === 'dividend') {
@@ -45,7 +49,7 @@ export function AddTransactionForm({ onClose }: Props) {
     const result = await createStockTransaction(
       transactionDate,
       transactionType,
-      ticker.trim().toUpperCase(),
+      formattedTicker,
       transactionType === 'dividend' ? null : parseFloat(quantity),
       transactionType === 'dividend' ? null : parseFloat(pricePerShare),
       totalAmount,
@@ -137,10 +141,15 @@ export function AddTransactionForm({ onClose }: Props) {
               type="text"
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              placeholder="e.g. ASML"
+              placeholder="e.g. AGN, ASML, AAPL"
               required
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white uppercase"
             />
+            {ticker && formatTickerForYahoo(ticker) !== ticker.trim().toUpperCase() && (
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                💡 Will be saved as: <strong>{formatTickerForYahoo(ticker)}</strong>
+              </p>
+            )}
           </div>
 
           {transactionType !== 'dividend' && (

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createStock } from './actions'
+import { formatTickerForYahoo } from '@/lib/utils/ticker-formatter'
 
 type Props = {
   onClose: () => void
@@ -22,8 +23,11 @@ export function AddStockForm({ onClose }: Props) {
     setIsSubmitting(true)
     setError(null)
 
+    // Format ticker for Yahoo Finance (auto-add exchange suffix)
+    const formattedTicker = formatTickerForYahoo(ticker.trim())
+
     const result = await createStock(
-      ticker.trim().toUpperCase(),
+      formattedTicker,
       name.trim(),
       parseFloat(quantity),
       parseFloat(averageCost),

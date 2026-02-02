@@ -347,8 +347,11 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
         }
       )
 
+      console.log(`API Response status for ${formattedTicker}:`, response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log(`API Response data for ${formattedTicker}:`, JSON.stringify(data).substring(0, 500))
         const result = data.quoteSummary?.result?.[0]
 
         if (result) {
@@ -357,6 +360,8 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
           const dividendYield = result.summaryDetail?.dividendYield?.raw
           const trailingAnnualDividend = result.summaryDetail?.trailingAnnualDividendRate?.raw
           
+          console.log(`Extracted data for ${ticker}:`, { price, name, dividendYield, trailingAnnualDividend })
+          
           if (price) {
             quotes[ticker] = {
               price,
@@ -364,8 +369,14 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
               dividendYield: dividendYield ? dividendYield * 100 : undefined, // Convert to percentage
               trailingAnnualDividend,
             }
+          } else {
+            console.warn(`No price found for ${formattedTicker}`)
           }
+        } else {
+          console.warn(`No result in quoteSummary for ${formattedTicker}`)
         }
+      } else {
+        console.error(`API returned status ${response.status} for ${formattedTicker}`)
       }
     } catch (error) {
       console.error(`Error fetching quote for ${ticker} (formatted as ${formattedTicker}):`, error)
@@ -382,13 +393,18 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
           }
         )
 
+        console.log(`Fallback API Response status for ${formattedTicker}:`, fallbackResponse.status)
+        
         if (fallbackResponse.ok) {
           const fallbackData = await fallbackResponse.json()
+          console.log(`Fallback API Response data for ${formattedTicker}:`, JSON.stringify(fallbackData).substring(0, 500))
           const result = fallbackData.chart?.result?.[0]
 
           if (result?.meta) {
             const currentPrice = result.meta.regularMarketPrice || result.meta.previousClose
             const companyName = result.meta.shortName || result.meta.longName || ticker
+            
+            console.log(`Fallback extracted data for ${ticker}:`, { currentPrice, companyName })
             
             if (currentPrice) {
               quotes[ticker] = {
@@ -396,7 +412,11 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
                 name: companyName,
               }
             }
+          } else {
+            console.warn(`No result in fallback chart data for ${formattedTicker}`)
           }
+        } else {
+          console.error(`Fallback API returned status ${fallbackResponse.status} for ${formattedTicker}`)
         }
       } catch (fallbackError) {
         console.error(`Fallback also failed for ${ticker} (formatted as ${formattedTicker}):`, fallbackError)

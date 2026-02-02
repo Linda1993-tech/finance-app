@@ -9,10 +9,12 @@ import { deleteStock } from './actions'
 type Props = {
   stocks: Stock[]
   currentPrices: Record<string, number>
+  dividendYields: Record<string, number>
+  annualDividends: Record<string, number>
   onUpdatePrice: (ticker: string, price: number) => void
 }
 
-export function HoldingsTable({ stocks, currentPrices, onUpdatePrice }: Props) {
+export function HoldingsTable({ stocks, currentPrices, dividendYields, annualDividends, onUpdatePrice }: Props) {
   const [editingPrice, setEditingPrice] = useState<string | null>(null)
   const [newPrice, setNewPrice] = useState('')
 
@@ -59,6 +61,12 @@ export function HoldingsTable({ stocks, currentPrices, onUpdatePrice }: Props) {
               Kostprijs
             </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              Dividend Yield
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              Jaarlijks Div.
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               W/V
             </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -76,6 +84,11 @@ export function HoldingsTable({ stocks, currentPrices, onUpdatePrice }: Props) {
             const costBasis = stock.quantity * stock.average_cost
             const gainLoss = marketValue - costBasis
             const gainLossPercentage = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0
+            
+            // Dividend info
+            const dividendYield = dividendYields[stock.ticker]
+            const annualDividend = annualDividends[stock.ticker]
+            const totalAnnualDividend = annualDividend ? stock.quantity * annualDividend : null
 
             return (
               <tr key={stock.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
@@ -152,6 +165,16 @@ export function HoldingsTable({ stocks, currentPrices, onUpdatePrice }: Props) {
                 {/* Kostprijs */}
                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400">
                   {formatEuro(costBasis)}
+                </td>
+
+                {/* Dividend Yield */}
+                <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-orange-600 dark:text-orange-400">
+                  {dividendYield ? `${formatNumber(dividendYield, 2)}%` : '-'}
+                </td>
+
+                {/* Jaarlijks Dividend */}
+                <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-orange-600 dark:text-orange-400 font-medium">
+                  {totalAnnualDividend ? formatEuro(totalAnnualDividend) : '-'}
                 </td>
 
                 {/* W/V */}

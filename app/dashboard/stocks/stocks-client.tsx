@@ -18,6 +18,8 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
   const [showAddStock, setShowAddStock] = useState(false)
   const [showAddTransaction, setShowAddTransaction] = useState(false)
   const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({})
+  const [dividendYields, setDividendYields] = useState<Record<string, number>>({})
+  const [annualDividends, setAnnualDividends] = useState<Record<string, number>>({})
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table') // Default to table view
 
@@ -33,12 +35,20 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
       const quotes = await fetchStockQuotes(tickers)
       console.log('Received quotes:', quotes)
       
-      // Update prices
+      // Update prices and dividend info
       const prices: Record<string, number> = {}
+      const yields: Record<string, number> = {}
+      const dividends: Record<string, number> = {}
+      
       Object.entries(quotes).forEach(([ticker, quote]) => {
         prices[ticker] = quote.price
+        if (quote.dividendYield) yields[ticker] = quote.dividendYield
+        if (quote.trailingAnnualDividend) dividends[ticker] = quote.trailingAnnualDividend
       })
+      
       setCurrentPrices(prices)
+      setDividendYields(yields)
+      setAnnualDividends(dividends)
       
       // Update stock names in database if they've changed
       let namesUpdated = false
@@ -83,6 +93,18 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
   const totalGainLoss = totalValue - totalCost
   const totalGainLossPercentage = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0
 
+  // Calculate total annual dividends
+  const totalAnnualDividends = initialStocks.reduce((sum, stock) => {
+    const annualDividend = annualDividends[stock.ticker]
+    if (annualDividend) {
+      return sum + (stock.quantity * annualDividend)
+    }
+    return sum
+  }, 0)
+
+  // Calculate portfolio dividend yield
+  const portfolioDividendYield = totalValue > 0 ? (totalAnnualDividends / totalValue) * 100 : 0
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -109,7 +131,7 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Portfolio Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
             <div className="text-sm opacity-90 font-medium">Portfolio Value</div>
             <div className="text-3xl font-bold mt-2">{formatEuro(totalValue)}</div>
@@ -144,6 +166,14 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
               {totalGainLossPercentage >= 0 ? '+' : ''}{formatNumber(totalGainLossPercentage)}%
             </div>
             <div className="text-xs opacity-75 mt-1">Since inception</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl shadow-lg p-6 text-white">
+            <div className="text-sm opacity-90 font-medium">Annual Dividends</div>
+            <div className="text-3xl font-bold mt-2">{formatEuro(totalAnnualDividends)}</div>
+            <div className="text-xs opacity-75 mt-1">
+              {portfolioDividendYield > 0 ? `${formatNumber(portfolioDividendYield)}% yield` : 'Per year'}
+            </div>
           </div>
         </div>
 
@@ -227,22 +257,26 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
             <HoldingsTable
               stocks={initialStocks}
               currentPrices={currentPrices}
+              dividendYields={dividendYields}
+              annualDividends={annualDividends}
               onUpdatePrice={(ticker, price) => {
                 setCurrentPrices({ ...currentPrices, [ticker]: price })
               }}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {initialStocks.map((stock) => (
-                <HoldingCard
-                  key={stock.id}
-                  stock={stock}
-                  currentPrice={currentPrices[stock.ticker] || stock.average_cost}
-                  onUpdatePrice={(ticker, price) => {
-                    setCurrentPrices({ ...currentPrices, [ticker]: price })
-                  }}
-                />
-              ))}
+            {initialStocks.map((stock) => (
+              <HoldingCard
+                key={stock.id}
+                stock={stock}
+                currentPrice={currentPrices[stock.ticker] || stock.average_cost}
+                dividendYield={dividendYields[stock.ticker]}
+                annualDividend={annualDividends[stock.ticker]}
+                onUpdatePrice={(ticker, price) => {
+                  setCurrentPrices({ ...currentPrices, [ticker]: price })
+                }}
+              />
+            ))}
             </div>
           )}
         </div>

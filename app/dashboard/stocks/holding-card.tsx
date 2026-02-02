@@ -8,10 +8,12 @@ import { deleteStock, getStockTransactions } from './actions'
 type Props = {
   stock: Stock
   currentPrice: number
+  dividendYield?: number
+  annualDividend?: number
   onUpdatePrice: (ticker: string, price: number) => void
 }
 
-export function HoldingCard({ stock, currentPrice, onUpdatePrice }: Props) {
+export function HoldingCard({ stock, currentPrice, dividendYield, annualDividend, onUpdatePrice }: Props) {
   const [isEditingPrice, setIsEditingPrice] = useState(false)
   const [newPrice, setNewPrice] = useState(currentPrice.toString())
   const [isDeleting, setIsDeleting] = useState(false)
@@ -147,6 +149,22 @@ export function HoldingCard({ stock, currentPrice, onUpdatePrice }: Props) {
             {formatEuro(costBasis)}
           </span>
         </div>
+        {dividendYield && (
+          <div className="flex justify-between text-sm">
+            <span className="text-orange-600 dark:text-orange-400">Dividend Yield:</span>
+            <span className="font-medium text-orange-600 dark:text-orange-400">
+              {formatNumber(dividendYield, 2)}%
+            </span>
+          </div>
+        )}
+        {annualDividend && (
+          <div className="flex justify-between text-sm">
+            <span className="text-orange-600 dark:text-orange-400">Annual Dividend:</span>
+            <span className="font-medium text-orange-600 dark:text-orange-400">
+              {formatEuro(stock.quantity * annualDividend)}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Gain/Loss */}

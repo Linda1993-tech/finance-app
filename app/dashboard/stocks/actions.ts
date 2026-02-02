@@ -290,6 +290,8 @@ export async function calculatePortfolioStats(currentPrices: Record<string, numb
 export type StockQuote = {
   price: number
   name: string
+  dividendYield?: number // Dividend yield as percentage
+  trailingAnnualDividend?: number // Annual dividend amount
 }
 
 export async function fetchStockPrices(tickers: string[]): Promise<Record<string, number>> {
@@ -331,8 +333,9 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
 
   for (const ticker of tickers) {
     try {
+      // Fetch from quote API for more detailed info including dividends
       const response = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`,
+        `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=price,summaryDetail`,
         {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -343,22 +346,58 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
 
       if (response.ok) {
         const data = await response.json()
-        const result = data.chart?.result?.[0]
+        const result = data.quoteSummary?.result?.[0]
 
-        if (result?.meta) {
-          const currentPrice = result.meta.regularMarketPrice || result.meta.previousClose
-          const companyName = result.meta.shortName || result.meta.longName || ticker
+        if (result) {
+          const price = result.price?.regularMarketPrice?.raw || result.price?.previousClose?.raw
+          const name = result.price?.shortName || result.price?.longName || ticker
+          const dividendYield = result.summaryDetail?.dividendYield?.raw
+          const trailingAnnualDividend = result.summaryDetail?.trailingAnnualDividendRate?.raw
           
-          if (currentPrice) {
+          if (price) {
             quotes[ticker] = {
-              price: currentPrice,
-              name: companyName,
+              price,
+              name,
+              dividendYield: dividendYield ? dividendYield * 100 : undefined, // Convert to percentage
+              trailingAnnualDividend,
             }
           }
         }
       }
     } catch (error) {
       console.error(`Error fetching quote for ${ticker}:`, error)
+      
+      // Fallback to chart API if quote API fails
+      try {
+        const fallbackResponse = await fetch(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`,
+          {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+            next: { revalidate: 300 },
+          }
+        )
+
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json()
+          const result = fallbackData.chart?.result?.[0]
+
+          if (result?.meta) {
+            const currentPrice = result.meta.regularMarketPrice || result.meta.previousClose
+            const companyName = result.meta.shortName || result.meta.longName || ticker
+            
+            if (currentPrice) {
+              quotes[ticker] = {
+                price: currentPrice,
+                name: companyName,
+              }
+            }
+          }
+        }
+      } catch (fallbackError) {
+        console.error(`Fallback also failed for ${ticker}:`, fallbackError)
+      }
     }
   }
 

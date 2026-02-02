@@ -2,6 +2,7 @@
 
 import type { SavingsAccount } from '@/lib/types/database'
 import type { SavingsStats } from './actions'
+import { formatEuro, formatNumber } from '@/lib/utils/currency-format'
 
 type Props = {
   account: SavingsAccount
@@ -45,7 +46,7 @@ export function AccountCard({ account, stats, onAddEntry }: Props) {
         <div className="mt-4">
           <div className="text-sm opacity-90">Current Balance</div>
           <div className="text-4xl font-bold mt-1">
-            €{stats.currentBalance.toFixed(2)}
+            {formatEuro(stats.currentBalance)}
           </div>
         </div>
       </div>
@@ -55,19 +56,19 @@ export function AccountCard({ account, stats, onAddEntry }: Props) {
         <div>
           <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Deposits</div>
           <div className="text-lg font-semibold text-green-600 dark:text-green-400">
-            €{stats.totalDeposits.toFixed(2)}
+            {formatEuro(stats.totalDeposits)}
           </div>
         </div>
         <div>
           <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Withdrawals</div>
           <div className="text-lg font-semibold text-red-600 dark:text-red-400">
-            €{stats.totalWithdrawals.toFixed(2)}
+            {formatEuro(stats.totalWithdrawals)}
           </div>
         </div>
         <div>
           <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Interest</div>
           <div className="text-lg font-semibold text-purple-600 dark:text-purple-400">
-            €{stats.totalInterest.toFixed(2)}
+            {formatEuro(stats.totalInterest)}
           </div>
         </div>
       </div>
@@ -81,7 +82,7 @@ export function AccountCard({ account, stats, onAddEntry }: Props) {
                 Annualized Interest Rate
               </div>
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
-                {stats.interestRate.toFixed(2)}%
+                {formatNumber(stats.interestRate)}%
               </div>
             </div>
             <span className="text-3xl">📈</span>
@@ -119,7 +120,7 @@ export function AccountCard({ account, stats, onAddEntry }: Props) {
                   entry.entry_type === 'withdrawal' ? 'text-red-600 dark:text-red-400' :
                   'text-blue-600 dark:text-blue-400'
                 }`}>
-                  €{entry.amount.toFixed(2)}
+                  {formatEuro(entry.amount)}
                 </div>
               </div>
             ))}

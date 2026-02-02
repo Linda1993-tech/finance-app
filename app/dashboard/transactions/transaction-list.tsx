@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { CategorizeModal } from './categorize-modal'
 import type { Category } from '@/lib/types/database'
+import { formatEuro } from '@/lib/utils/currency-format'
 
 type Transaction = {
   id: string
@@ -95,14 +96,14 @@ export function TransactionList({ transactions, categories }: Props) {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="text-sm text-gray-600 dark:text-gray-400">Income</div>
           <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-            €{totalIncome.toFixed(2)}
+            {formatEuro(totalIncome)}
           </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="text-sm text-gray-600 dark:text-gray-400">Expenses</div>
           <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-            €{totalExpense.toFixed(2)}
+            {formatEuro(totalExpense)}
           </div>
         </div>
 
@@ -115,7 +116,7 @@ export function TransactionList({ transactions, categories }: Props) {
                 : 'text-red-600 dark:text-red-400'
             }`}
           >
-            €{netCashflow.toFixed(2)}
+            {formatEuro(netCashflow)}
           </div>
         </div>
       </div>
@@ -256,7 +257,7 @@ export function TransactionList({ transactions, categories }: Props) {
                     }`}
                   >
                     {transaction.amount >= 0 ? '+' : ''}
-                    {transaction.currency} {transaction.amount.toFixed(2)}
+                    {formatEuro(transaction.amount)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                     <button

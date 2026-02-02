@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import type { Transaction } from '@/lib/types/database'
 import type { SavingsAccount } from '@/lib/types/database'
 import { getUnlinkedTransfers, importTransfersToSavings } from './actions'
+import { formatEuro } from '@/lib/utils/currency-format'
 
 type Props = {
   accounts: SavingsAccount[]
@@ -198,7 +199,7 @@ export function ImportTransfers({ accounts, onSuccess, onClose }: Props) {
                         ? 'text-green-600 dark:text-green-400'
                         : 'text-red-600 dark:text-red-400'
                     }`}>
-                      {transfer.amount > 0 ? '+' : ''}€{transfer.amount.toFixed(2)}
+                      {transfer.amount > 0 ? '+' : ''}{formatEuro(transfer.amount)}
                     </div>
                   </div>
 

@@ -5,6 +5,7 @@ import type { BudgetStatus } from './budget-actions'
 import type { Category } from '@/lib/types/database'
 import { BudgetList } from './budget-list'
 import { SetBudgetForm } from './set-budget-form'
+import { formatEuro } from '@/lib/utils/currency-format'
 
 type Props = {
   initialBudgetStatuses: BudgetStatus[]
@@ -81,11 +82,11 @@ export function BudgetClient({ initialBudgetStatuses, categories, currentMonth, 
             Total Budget {viewMode === 'yearly' && '(Year)'}
           </h3>
           <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-            €{totalBudget.toFixed(2)}
+            {formatEuro(totalBudget)}
           </p>
           {viewMode === 'yearly' && (
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              €{(totalBudget / 12).toFixed(2)}/month
+              {formatEuro(totalBudget / 12)}/month
             </p>
           )}
         </div>
@@ -95,11 +96,11 @@ export function BudgetClient({ initialBudgetStatuses, categories, currentMonth, 
             Total Spent {viewMode === 'yearly' && '(YTD)'}
           </h3>
           <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-            €{totalSpent.toFixed(2)}
+            {formatEuro(totalSpent)}
           </p>
           {viewMode === 'yearly' && (
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              €{(totalSpent / currentMonth).toFixed(2)}/month avg
+              {formatEuro(totalSpent / currentMonth)}/month avg
             </p>
           )}
         </div>
@@ -113,7 +114,7 @@ export function BudgetClient({ initialBudgetStatuses, categories, currentMonth, 
                 : 'text-red-600 dark:text-red-400'
             }`}
           >
-            €{totalRemaining.toFixed(2)}
+            {formatEuro(totalRemaining)}
           </p>
         </div>
 

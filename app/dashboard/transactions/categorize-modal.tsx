@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { categorizeTransaction, type CategorizeOption } from './categorization-actions'
 import type { Category, SavingsAccount } from '@/lib/types/database'
 import { getSavingsAccounts } from '../savings/actions'
+import { formatEuro } from '@/lib/utils/currency-format'
 
 type Transaction = {
   id: string
@@ -107,7 +108,7 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
                   : 'text-red-600 dark:text-red-400'
               }`}
             >
-              {transaction.amount >= 0 ? '+' : ''}€{transaction.amount.toFixed(2)}
+              {transaction.amount >= 0 ? '+' : ''}{formatEuro(transaction.amount)}
             </p>
           </div>
         </div>

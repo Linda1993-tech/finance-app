@@ -7,6 +7,7 @@ import { AccountCard } from './account-card'
 import { AddEntryForm } from './add-entry-form'
 import { ImportTransfers } from './import-transfers'
 import { calculateSavingsStats, type SavingsStats } from './actions'
+import { formatEuro } from '@/lib/utils/currency-format'
 
 type Props = {
   initialAccounts: SavingsAccount[]
@@ -63,19 +64,19 @@ export function SavingsClient({ initialAccounts }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
             <div className="text-sm opacity-90 font-medium">Total Savings</div>
-            <div className="text-3xl font-bold mt-2">€{totalBalance.toFixed(2)}</div>
+            <div className="text-3xl font-bold mt-2">{formatEuro(totalBalance)}</div>
             <div className="text-xs opacity-75 mt-1">Across {accounts.length} account{accounts.length !== 1 ? 's' : ''}</div>
           </div>
 
           <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
             <div className="text-sm opacity-90 font-medium">Total Deposits</div>
-            <div className="text-3xl font-bold mt-2">€{totalDeposits.toFixed(2)}</div>
+            <div className="text-3xl font-bold mt-2">{formatEuro(totalDeposits)}</div>
             <div className="text-xs opacity-75 mt-1">Money saved</div>
           </div>
 
           <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg p-6 text-white">
             <div className="text-sm opacity-90 font-medium">Total Interest Earned</div>
-            <div className="text-3xl font-bold mt-2">€{totalInterest.toFixed(2)}</div>
+            <div className="text-3xl font-bold mt-2">{formatEuro(totalInterest)}</div>
             <div className="text-xs opacity-75 mt-1">Free money! 🎉</div>
           </div>
         </div>

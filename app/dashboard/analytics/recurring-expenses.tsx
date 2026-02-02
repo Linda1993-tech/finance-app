@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { formatEuro } from '@/lib/utils/currency-format'
 
 type RecurringExpense = {
   learning_key: string
@@ -149,7 +150,7 @@ export async function RecurringExpenses() {
             </div>
             <div className="text-right">
               <div className="text-xl font-bold text-red-600 dark:text-red-400">
-                €{expense.avgAmount.toFixed(2)}
+                {formatEuro(expense.avgAmount)}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">avg per charge</div>
             </div>
@@ -159,8 +160,8 @@ export async function RecurringExpenses() {
 
       <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <div className="text-sm text-blue-800 dark:text-blue-200">
-          <strong>💡 Tip:</strong> Total recurring expenses: €
-          {recurring.reduce((sum, e) => sum + e.avgAmount, 0).toFixed(2)} per cycle. Make sure to
+          <strong>💡 Tip:</strong> Total recurring expenses:{' '}
+          {formatEuro(recurring.reduce((sum, e) => sum + e.avgAmount, 0))} per cycle. Make sure to
           budget for these!
         </div>
       </div>

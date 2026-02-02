@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { BudgetStatus } from './budget-actions'
 import { deleteBudget } from './budget-actions'
+import { formatEuro } from '@/lib/utils/currency-format'
 
 type Props = {
   budgetStatuses: BudgetStatus[]
@@ -148,9 +149,9 @@ function renderBudgetItem(
               )}
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              €{status.spent.toFixed(2)} of €{status.budget.amount.toFixed(2)}
+              {formatEuro(status.spent)} of {formatEuro(status.budget.amount)}
               {viewMode === 'yearly' && (
-                <span className="text-xs ml-1">(€{(status.budget.amount / 12).toFixed(2)}/mo)</span>
+                <span className="text-xs ml-1">({formatEuro(status.budget.amount / 12)}/mo)</span>
               )}
             </p>
           </div>
@@ -176,7 +177,7 @@ function renderBudgetItem(
                   : 'text-red-600 dark:text-red-400'
               }`}
             >
-              €{Math.abs(status.remaining).toFixed(2)}{' '}
+              {formatEuro(Math.abs(status.remaining))}{' '}
               {status.remaining >= 0 ? 'left' : 'over'}
             </p>
           </div>
@@ -209,7 +210,7 @@ function renderBudgetItem(
       {/* Over budget indicator */}
       {isOverBudget && (
         <p className="mt-2 text-sm text-red-600 dark:text-red-400 font-medium">
-          ⚠️ Over budget by €{(status.spent - status.budget.amount).toFixed(2)}
+          ⚠️ Over budget by {formatEuro(status.spent - status.budget.amount)}
         </p>
       )}
     </div>

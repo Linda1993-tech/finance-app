@@ -5,6 +5,7 @@ import { MonthlyTrendsChart, CategoryBreakdownChart, TopCategoriesChart } from '
 import { AnalyticsFilters, type AnalyticsFilters as Filters } from './filters'
 import type { MonthlyData, CategorySpending } from './data-actions'
 import type { Category } from '@/lib/types/database'
+import { formatEuro } from '@/lib/utils/currency-format'
 
 type Props = {
   initialMonthlyTrends: MonthlyData[]
@@ -125,7 +126,7 @@ export function AnalyticsClient({
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="text-sm text-gray-600 dark:text-gray-400">Income</div>
           <div className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-            €{currentMonth.income.toFixed(2)}
+            {formatEuro(currentMonth.income)}
           </div>
           {previousMonth && incomeChange !== 0 && (
             <div
@@ -144,7 +145,7 @@ export function AnalyticsClient({
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="text-sm text-gray-600 dark:text-gray-400">Expenses</div>
           <div className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
-            €{currentMonth.expenses.toFixed(2)}
+            {formatEuro(currentMonth.expenses)}
           </div>
           {previousMonth && expenseChange !== 0 && (
             <div
@@ -169,7 +170,7 @@ export function AnalyticsClient({
                 : 'text-red-600 dark:text-red-400'
             }`}
           >
-            €{currentMonth.net.toFixed(2)}
+            {formatEuro(currentMonth.net)}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
             {currentMonth.net >= 0 ? 'Surplus' : 'Deficit'}
@@ -183,15 +184,15 @@ export function AnalyticsClient({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <div className="text-sm opacity-90">Per Month</div>
-            <div className="text-2xl font-bold">€{avgMonthlyExpense.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatEuro(avgMonthlyExpense)}</div>
           </div>
           <div>
             <div className="text-sm opacity-90">Per Week</div>
-            <div className="text-2xl font-bold">€{avgWeeklyExpense.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatEuro(avgWeeklyExpense)}</div>
           </div>
           <div>
             <div className="text-sm opacity-90">Per Day</div>
-            <div className="text-2xl font-bold">€{avgDailyExpense.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatEuro(avgDailyExpense)}</div>
           </div>
         </div>
         <div className="text-xs opacity-75 mt-3">
@@ -245,7 +246,7 @@ export function AnalyticsClient({
                   </div>
                 </div>
                 <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                  €{cat.amount.toFixed(2)}
+                  {formatEuro(cat.amount)}
                 </div>
               </div>
             ))}

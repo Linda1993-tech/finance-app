@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { formatEuro } from '@/lib/utils/currency-format'
 
 export default async function DebugBudgetPage() {
   const supabase = await createClient()
@@ -73,11 +74,11 @@ export default async function DebugBudgetPage() {
         <h2 className="text-xl mb-2">Leisure & Entertainment Transactions (Jan 2026):</h2>
         <div className="bg-gray-800 p-4 rounded">
           <p className="mb-2">Count: {leisureTransactions?.length}</p>
-          <p className="mb-2 font-bold text-green-400">Total: €{leisureTotal.toFixed(2)}</p>
+          <p className="mb-2 font-bold text-green-400">Total: {formatEuro(leisureTotal)}</p>
           <p className="text-sm text-gray-400 mb-4">(This should match what shows in the budget table)</p>
           {leisureTransactions?.slice(0, 10).map(tx => (
             <div key={tx.id} className="text-sm mb-1">
-              {tx.transaction_date}: {tx.description} - €{Math.abs(tx.amount).toFixed(2)}
+              {tx.transaction_date}: {tx.description} - {formatEuro(Math.abs(tx.amount))}
             </div>
           ))}
         </div>

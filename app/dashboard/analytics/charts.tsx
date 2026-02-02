@@ -15,6 +15,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { formatEuro } from '@/lib/utils/currency-format'
 import type { MonthlyData, CategorySpending } from './data-actions'
 
 const COLORS = [
@@ -52,7 +53,7 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="monthLabel" />
         <YAxis />
-        <Tooltip formatter={(value) => typeof value === 'number' ? `€${value.toFixed(2)}` : `€${value || 0}`} />
+        <Tooltip formatter={(value) => typeof value === 'number' ? formatEuro(value) : formatEuro(0)} />
         <Legend />
         <Line
           type="monotone"
@@ -99,7 +100,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
             <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(value) => typeof value === 'number' ? `€${value.toFixed(2)}` : `€${value || 0}`} />
+        <Tooltip formatter={(value) => typeof value === 'number' ? formatEuro(value) : formatEuro(0)} />
       </PieChart>
     </ResponsiveContainer>
   )
@@ -123,7 +124,7 @@ export function TopCategoriesChart({ data, limit = 10 }: TopCategoriesChartProps
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis type="number" />
         <YAxis dataKey="category" type="category" width={150} />
-        <Tooltip formatter={(value) => typeof value === 'number' ? `€${value.toFixed(2)}` : `€${value || 0}`} />
+        <Tooltip formatter={(value) => typeof value === 'number' ? formatEuro(value) : formatEuro(0)} />
         <Bar dataKey="amount" fill="#3B82F6">
           {topData.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />

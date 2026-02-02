@@ -11,6 +11,7 @@ type Transaction = {
   normalized_description: string
   learning_key: string | null
   amount: number
+  transaction_date: string
 }
 
 type Props = {

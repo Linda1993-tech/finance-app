@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import type { SavingsAccount } from '@/lib/types/database'
 import { CreateAccountForm } from './create-account-form'
 import { AccountCard } from './account-card'
+import { deleteSavingsAccount } from './actions'
 import { AddEntryForm } from './add-entry-form'
 import { ImportTransfers } from './import-transfers'
 import { calculateSavingsStats, type SavingsStats } from './actions'
@@ -221,6 +222,10 @@ export function SavingsClient({ initialAccounts }: Props) {
               account={account}
               stats={accountStats[account.id]}
               onAddEntry={() => handleAddEntry(account)}
+              onDelete={async (id) => {
+                await deleteSavingsAccount(id)
+                window.location.reload()
+              }}
             />
           ))}
         </div>

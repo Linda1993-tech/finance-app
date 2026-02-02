@@ -81,6 +81,29 @@ export async function createSavingsAccount(input: {
 }
 
 /**
+ * Delete a savings account
+ */
+export async function deleteSavingsAccount(accountId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('savings_accounts')
+    .delete()
+    .eq('id', accountId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Error deleting savings account:', error)
+    return { success: false, error: 'Failed to delete account' }
+  }
+
+  revalidatePath('/dashboard/savings')
+  return { success: true }
+}
+
+/**
  * Update a savings account
  */
 export async function updateSavingsAccount(

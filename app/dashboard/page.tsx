@@ -120,7 +120,7 @@ export default async function DashboardPage() {
                   Savings
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Toegankelijk spaargeld
+                  Accessible savings accounts
                 </p>
               </div>
             </div>
@@ -134,10 +134,10 @@ export default async function DashboardPage() {
               <div className="text-4xl">💼</div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Pensioen
+                  Pension
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Pensioenspaarrekeningen
+                  Pension savings accounts
                 </p>
               </div>
             </div>

@@ -8,9 +8,10 @@ type Props = {
   account: SavingsAccount
   stats: SavingsStats | undefined
   onAddEntry: () => void
+  onDelete: (accountId: string) => void
 }
 
-export function AccountCard({ account, stats, onAddEntry }: Props) {
+export function AccountCard({ account, stats, onAddEntry, onDelete }: Props) {
   if (!stats) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
@@ -31,7 +32,18 @@ export function AccountCard({ account, stats, onAddEntry }: Props) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-shadow">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white">
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white relative">
+        <button
+          onClick={() => {
+            if (confirm(`Delete ${account.name}? This cannot be undone.`)) {
+              onDelete(account.id)
+            }
+          }}
+          className="absolute top-4 right-4 text-white/70 hover:text-white hover:bg-white/20 rounded-lg p-2 transition-all"
+        >
+          🗑️
+        </button>
+        
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <span className="text-4xl">{account.icon}</span>

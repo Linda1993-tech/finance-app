@@ -71,6 +71,7 @@ export type SavingsAccount = {
   interest_payment_frequency: 'monthly' | 'quarterly' | 'annual'
   fixed_rate_end_date: string | null // Date when fixed rate expires (e.g., '2048-02-12')
   last_interest_calculation_date: string | null // Last date interest was calculated
+  is_pension: boolean // True for pension accounts (not accessible until retirement)
   created_at: string
   updated_at: string
 }

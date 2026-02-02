@@ -22,7 +22,7 @@ export async function getSavingsAccounts(): Promise<SavingsAccount[]> {
     .from('savings_accounts')
     .select('*')
     .eq('user_id', user.id)
-    .eq('is_pension', false) // Only regular savings, not pension
+    .eq('is_pension', true) // Only pension accounts
     .order('created_at', { ascending: true })
 
   if (error) {
@@ -68,7 +68,7 @@ export async function createSavingsAccount(input: {
     interest_type: input.interest_type || 'manual',
     interest_payment_frequency: input.interest_payment_frequency || 'annual',
     fixed_rate_end_date: input.fixed_rate_end_date || null,
-    is_pension: false, // Regular savings account
+    is_pension: true, // Pension account
   })
 
   if (error) {
@@ -76,7 +76,7 @@ export async function createSavingsAccount(input: {
     return { success: false, error: 'Failed to create savings account' }
   }
 
-  revalidatePath('/dashboard/savings')
+  revalidatePath('/dashboard/pension')
   return { success: true }
 }
 
@@ -115,7 +115,7 @@ export async function updateSavingsAccount(
     return { success: false, error: 'Failed to update savings account' }
   }
 
-  revalidatePath('/dashboard/savings')
+  revalidatePath('/dashboard/pension')
   return { success: true }
 }
 
@@ -144,7 +144,7 @@ export async function deleteSavingsAccount(accountId: string): Promise<{ success
     return { success: false, error: 'Failed to delete savings account' }
   }
 
-  revalidatePath('/dashboard/savings')
+  revalidatePath('/dashboard/pension')
   return { success: true }
 }
 
@@ -245,7 +245,7 @@ export async function addSavingsEntry(input: {
     return { success: false, error: 'Failed to add savings entry' }
   }
 
-  revalidatePath('/dashboard/savings')
+  revalidatePath('/dashboard/pension')
   return { success: true }
 }
 
@@ -274,7 +274,7 @@ export async function deleteSavingsEntry(entryId: string): Promise<{ success: bo
     return { success: false, error: 'Failed to delete savings entry' }
   }
 
-  revalidatePath('/dashboard/savings')
+  revalidatePath('/dashboard/pension')
   return { success: true }
 }
 
@@ -438,7 +438,7 @@ export async function importTransfersToSavings(
     }
   }
 
-  revalidatePath('/dashboard/savings')
+  revalidatePath('/dashboard/pension')
   
   return {
     success: imported > 0,

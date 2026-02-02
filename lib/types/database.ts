@@ -21,6 +21,7 @@ export type Transaction = {
   description: string
   amount: number
   currency: string
+  account_type: 'dutch' | 'spanish' | 'other'
   normalized_description: string
   learning_key: string | null
   category_id: string | null
@@ -123,8 +124,10 @@ export type StockTransaction = {
 export type UserPreferences = {
   id: string
   user_id: string
-  current_account_starting_balance: number
-  current_account_starting_date: string | null
+  dutch_account_starting_balance: number
+  dutch_account_starting_date: string | null
+  spanish_account_starting_balance: number
+  spanish_account_starting_date: string | null
   created_at: string
   updated_at: string
 }

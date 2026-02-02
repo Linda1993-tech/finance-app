@@ -89,6 +89,7 @@ export function parseINGESXLSX(fileBuffer: ArrayBuffer): ParseResult {
           description,
           amount,
           currency: 'EUR',
+          account_type: 'spanish',
         })
       } catch (err) {
         console.warn('Skipping invalid row:', row, err)

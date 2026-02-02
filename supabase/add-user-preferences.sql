@@ -4,9 +4,13 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   
-  -- Current Account Starting Balance
-  current_account_starting_balance DECIMAL(12, 2) DEFAULT 0,
-  current_account_starting_date DATE,
+  -- Dutch Account Starting Balance
+  dutch_account_starting_balance DECIMAL(12, 2) DEFAULT 0,
+  dutch_account_starting_date DATE,
+  
+  -- Spanish Account Starting Balance
+  spanish_account_starting_balance DECIMAL(12, 2) DEFAULT 0,
+  spanish_account_starting_date DATE,
   
   -- Other preferences can be added here in the future
   
@@ -40,5 +44,7 @@ CREATE POLICY "Users can update own preferences"
 CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
 
 COMMENT ON TABLE user_preferences IS 'User-specific app settings and preferences';
-COMMENT ON COLUMN user_preferences.current_account_starting_balance IS 'Starting balance of checking account before transaction tracking began';
-COMMENT ON COLUMN user_preferences.current_account_starting_date IS 'Date of the starting balance snapshot';
+COMMENT ON COLUMN user_preferences.dutch_account_starting_balance IS 'Starting balance of Dutch checking account (ING NL) before transaction tracking began';
+COMMENT ON COLUMN user_preferences.dutch_account_starting_date IS 'Date of the Dutch account starting balance snapshot';
+COMMENT ON COLUMN user_preferences.spanish_account_starting_balance IS 'Starting balance of Spanish checking account (ING ES) before transaction tracking began';
+COMMENT ON COLUMN user_preferences.spanish_account_starting_date IS 'Date of the Spanish account starting balance snapshot';

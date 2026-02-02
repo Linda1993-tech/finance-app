@@ -103,29 +103,40 @@ export async function getWealthOverview(): Promise<WealthOverview> {
     }
   }
 
-  // Get user preferences for starting balance
+  // Get user preferences for starting balances
   const { data: preferences } = await supabase
     .from('user_preferences')
-    .select('current_account_starting_balance')
+    .select('dutch_account_starting_balance, spanish_account_starting_balance')
     .eq('user_id', user.id)
     .single()
 
-  const startingBalance = preferences?.current_account_starting_balance || 0
+  const dutchStartingBalance = preferences?.dutch_account_starting_balance || 0
+  const spanishStartingBalance = preferences?.spanish_account_starting_balance || 0
 
   // Calculate current account balance from transactions
   const { data: transactions } = await supabase
     .from('transactions')
-    .select('amount, is_transfer')
+    .select('amount, is_transfer, account_type')
     .eq('user_id', user.id)
 
-  let currentAccount = startingBalance
+  let dutchAccountBalance = dutchStartingBalance
+  let spanishAccountBalance = spanishStartingBalance
+
   if (transactions) {
-    // Add all non-transfer transactions to starting balance
-    const transactionsTotal = transactions
-      .filter((t) => !t.is_transfer)
+    // Dutch account transactions
+    const dutchTransactionsTotal = transactions
+      .filter((t) => !t.is_transfer && t.account_type === 'dutch')
       .reduce((sum, t) => sum + t.amount, 0)
-    currentAccount = startingBalance + transactionsTotal
+    dutchAccountBalance = dutchStartingBalance + dutchTransactionsTotal
+
+    // Spanish account transactions
+    const spanishTransactionsTotal = transactions
+      .filter((t) => !t.is_transfer && t.account_type === 'spanish')
+      .reduce((sum, t) => sum + t.amount, 0)
+    spanishAccountBalance = spanishStartingBalance + spanishTransactionsTotal
   }
+
+  const currentAccount = dutchAccountBalance + spanishAccountBalance
 
   const totalNetWorth = totalSavings + totalPension + totalStocks + currentAccount
 

@@ -115,6 +115,7 @@ async function saveTransactions(
       description: t.description,
       amount: t.amount,
       currency: t.currency,
+      account_type: t.account_type,
       normalized_description: normalized,
       learning_key: learningKey,
       import_source: source,

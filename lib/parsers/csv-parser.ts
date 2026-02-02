@@ -10,6 +10,7 @@ export type ParsedTransaction = {
   description: string
   amount: number
   currency: string
+  account_type: 'dutch' | 'spanish' | 'other'
 }
 
 export type ParseResult = {
@@ -91,6 +92,7 @@ export function parseINGNLCSV(fileContent: string): ParseResult {
           description,
           amount,
           currency: 'EUR',
+          account_type: 'dutch',
         })
       } catch (err) {
         console.warn('Skipping invalid row:', row, err)

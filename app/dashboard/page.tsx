@@ -194,24 +194,6 @@ export default async function DashboardPage() {
             </div>
           </a>
         </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Welcome to your Finance App! 🎉
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Your account is set up and ready. Here's our progress:
-          </p>
-          <ul className="space-y-2 text-gray-600 dark:text-gray-400">
-            <li>✅ Authentication</li>
-            <li>✅ Database schema</li>
-            <li>✅ Category management</li>
-            <li>✅ CSV/XLSX import functionality</li>
-            <li>✅ Smart categorization with learning</li>
-            <li>✅ Monthly expense dashboards</li>
-            <li>✅ Budget planning & tracking</li>
-          </ul>
-        </div>
       </main>
     </div>
   )

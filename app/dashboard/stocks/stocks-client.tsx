@@ -27,10 +27,18 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
     
     try {
       const tickers = initialStocks.map((s) => s.ticker)
+      console.log('Fetching prices for tickers:', tickers)
       const prices = await fetchStockPrices(tickers)
+      console.log('Received prices:', prices)
       setCurrentPrices(prices)
+      
+      // Show alert if no prices were fetched
+      if (Object.keys(prices).length === 0 && tickers.length > 0) {
+        alert('⚠️ Koersen niet gevonden. Zorg dat je de juiste ticker gebruikt (bijv. AGN.AS voor Aegon Amsterdam)')
+      }
     } catch (error) {
       console.error('Error fetching stock prices:', error)
+      alert('❌ Fout bij ophalen koersen. Check de console voor details.')
     } finally {
       setIsRefreshing(false)
     }
@@ -116,6 +124,14 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
             </div>
             <div className="text-xs opacity-75 mt-1">Since inception</div>
           </div>
+        </div>
+
+        {/* Ticker Info Box */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            <strong>💡 Tip:</strong> Gebruik de juiste ticker met beurs suffix:
+            <span className="ml-2 font-mono">ASML.AS (Amsterdam), AAPL (US), AIR.PA (Parijs)</span>
+          </p>
         </div>
 
         {/* Action Buttons */}

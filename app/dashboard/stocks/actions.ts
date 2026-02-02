@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Stock, StockTransaction } from '@/lib/types/database'
-import { formatTicker } from '@/lib/utils/ticker-formatter'
+import { formatTickerForYahoo } from '@/lib/utils/ticker-formatter'
 
 // ============== STOCKS (Holdings) ==============
 
@@ -333,7 +333,7 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
   const quotes: Record<string, StockQuote> = {}
 
   for (const ticker of tickers) {
-    const formattedTicker = formatTicker(ticker) // Format ticker (e.g., AGN -> AGN.AS)
+    const formattedTicker = formatTickerForYahoo(ticker) // Format ticker (e.g., AGN -> AGN.AS)
     
     try {
       // Fetch from quote API for more detailed info including dividends

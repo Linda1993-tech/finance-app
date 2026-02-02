@@ -4,10 +4,6 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Stock, StockTransaction } from '@/lib/types/database'
 import { formatTickerForYahoo } from '@/lib/utils/ticker-formatter'
-import yahooFinance from 'yahoo-finance2'
-
-// Disable validation for development
-yahooFinance.setGlobalConfig({ validation: { logErrors: false } })
 
 // ============== STOCKS (Holdings) ==============
 
@@ -335,6 +331,7 @@ export async function fetchStockPrices(tickers: string[]): Promise<Record<string
 
 export async function fetchStockQuotes(tickers: string[]): Promise<Record<string, StockQuote>> {
   const quotes: Record<string, StockQuote> = {}
+  const apiKey = process.env.FMP_API_KEY || 'sFVuM3q1W3D47IIU3p7Uyn1BSTqyxIz0' // Financial Modeling Prep API key
 
   for (const ticker of tickers) {
     const formattedTicker = formatTickerForYahoo(ticker) // Format ticker (e.g., AGN -> AGN.AS)
@@ -342,32 +339,52 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
     try {
       console.log(`📊 Fetching quote for ${ticker} (formatted as ${formattedTicker})`)
       
-      // Fetch quote summary with all details
-      const result = await yahooFinance.quoteSummary(formattedTicker, {
-        modules: ['price', 'summaryDetail']
-      }) as any // Type assertion to work around yahoo-finance2 types
+      // Fetch quote from Financial Modeling Prep
+      const quoteUrl = `https://financialmodelingprep.com/api/v3/quote/${formattedTicker}?apikey=${apiKey}`
+      const quoteResponse = await fetch(quoteUrl, { next: { revalidate: 300 } })
       
-      console.log(`✅ Received data for ${formattedTicker}`)
+      if (!quoteResponse.ok) {
+        throw new Error(`FMP API returned ${quoteResponse.status}`)
+      }
       
-      // Extract price data
-      const price = result.price?.regularMarketPrice || result.price?.previousClose || 0
-      const name = result.price?.longName || result.price?.shortName || ticker
+      const quoteData = await quoteResponse.json()
       
-      // Extract dividend data
-      const dividendYield = result.summaryDetail?.dividendYield // Already as decimal (0.03 = 3%)
-      const trailingAnnualDividend = result.summaryDetail?.trailingAnnualDividendRate
+      if (!Array.isArray(quoteData) || quoteData.length === 0) {
+        console.warn(`⚠️ No data found for ${formattedTicker}`)
+        continue
+      }
       
-      console.log(`📈 ${ticker} - Price: ${price}, Name: ${name}, Dividend Yield: ${dividendYield ? (dividendYield * 100).toFixed(2) + '%' : 'N/A'}`)
+      const quote = quoteData[0]
+      const price = quote.price || 0
+      const name = quote.name || ticker
       
-      if (price && name) {
-        quotes[ticker] = {
-          price: typeof price === 'number' ? price : 0,
-          name,
-          dividendYield: dividendYield ? dividendYield * 100 : undefined, // Convert to percentage
-          trailingAnnualDividend: trailingAnnualDividend || undefined,
+      // Fetch company profile for dividend info
+      const profileUrl = `https://financialmodelingprep.com/api/v3/profile/${formattedTicker}?apikey=${apiKey}`
+      const profileResponse = await fetch(profileUrl, { next: { revalidate: 300 } })
+      
+      let dividendYield = undefined
+      let trailingAnnualDividend = undefined
+      
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json()
+        if (Array.isArray(profileData) && profileData.length > 0) {
+          const profile = profileData[0]
+          // FMP returns lastDividend (annual dividend per share) and beta
+          trailingAnnualDividend = profile.lastDiv || undefined
+          // Calculate dividend yield manually: (annual dividend / price) * 100
+          if (trailingAnnualDividend && price > 0) {
+            dividendYield = (trailingAnnualDividend / price) * 100
+          }
         }
-      } else {
-        console.warn(`⚠️ Incomplete data for ${formattedTicker}`)
+      }
+      
+      console.log(`✅ ${ticker} - Price: €${price}, Name: ${name}, Dividend Yield: ${dividendYield ? dividendYield.toFixed(2) + '%' : 'N/A'}`)
+      
+      quotes[ticker] = {
+        price,
+        name,
+        dividendYield,
+        trailingAnnualDividend,
       }
     } catch (error: any) {
       console.error(`❌ Error fetching quote for ${ticker} (${formattedTicker}):`, error.message || error)

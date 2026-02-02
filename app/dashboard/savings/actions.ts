@@ -41,6 +41,10 @@ export async function createSavingsAccount(input: {
   currency?: string
   color?: string
   icon?: string
+  interest_rate?: number
+  interest_type?: 'fixed' | 'variable' | 'manual'
+  interest_payment_frequency?: 'annual' | 'quarterly' | 'monthly'
+  fixed_rate_end_date?: string | null
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
@@ -59,6 +63,10 @@ export async function createSavingsAccount(input: {
     currency: input.currency || 'EUR',
     color: input.color || null,
     icon: input.icon || null,
+    interest_rate: input.interest_rate || 0,
+    interest_type: input.interest_type || 'manual',
+    interest_payment_frequency: input.interest_payment_frequency || 'annual',
+    fixed_rate_end_date: input.fixed_rate_end_date || null,
   })
 
   if (error) {

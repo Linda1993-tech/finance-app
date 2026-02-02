@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import type { Stock } from '@/lib/types/database'
+import { useState, useEffect } from 'react'
+import type { Stock, StockTransaction } from '@/lib/types/database'
 import { formatEuro, formatNumber } from '@/lib/utils/currency-format'
-import { deleteStock } from './actions'
+import { deleteStock, getStockTransactions } from './actions'
 
 type Props = {
   stock: Stock
@@ -15,6 +15,29 @@ export function HoldingCard({ stock, currentPrice, onUpdatePrice }: Props) {
   const [isEditingPrice, setIsEditingPrice] = useState(false)
   const [newPrice, setNewPrice] = useState(currentPrice.toString())
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showTransactions, setShowTransactions] = useState(false)
+  const [transactions, setTransactions] = useState<StockTransaction[]>([])
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false)
+
+  // Fetch transactions for this stock
+  useEffect(() => {
+    async function fetchTransactions() {
+      if (!showTransactions) return
+      setIsLoadingTransactions(true)
+      try {
+        const allTransactions = await getStockTransactions()
+        const stockTransactions = allTransactions.filter(
+          (tx) => tx.ticker === stock.ticker
+        )
+        setTransactions(stockTransactions)
+      } catch (error) {
+        console.error('Error fetching transactions:', error)
+      } finally {
+        setIsLoadingTransactions(false)
+      }
+    }
+    fetchTransactions()
+  }, [showTransactions, stock.ticker])
 
   const marketValue = stock.quantity * currentPrice
   const costBasis = stock.quantity * stock.average_cost
@@ -153,6 +176,63 @@ export function HoldingCard({ stock, currentPrice, onUpdatePrice }: Props) {
       {stock.notes && (
         <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 italic">
           {stock.notes}
+        </div>
+      )}
+
+      {/* Transaction History Toggle */}
+      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => setShowTransactions(!showTransactions)}
+          className="w-full text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center justify-center gap-2"
+        >
+          {showTransactions ? '▼' : '▶'} Transaction History
+        </button>
+      </div>
+
+      {/* Transactions List */}
+      {showTransactions && (
+        <div className="mt-3 space-y-2">
+          {isLoadingTransactions ? (
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
+              Loading...
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
+              No transactions yet
+            </div>
+          ) : (
+            transactions.map((tx) => (
+              <div
+                key={tx.id}
+                className="flex items-center justify-between text-xs p-2 bg-gray-50 dark:bg-gray-700/50 rounded"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                    tx.transaction_type === 'buy' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                    tx.transaction_type === 'sell' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
+                    'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                  }`}>
+                    {tx.transaction_type.toUpperCase()}
+                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    {new Date(tx.transaction_date).toLocaleDateString('nl-NL')}
+                  </span>
+                </div>
+                <div className="text-right">
+                  {tx.quantity && (
+                    <div className="text-gray-900 dark:text-white">
+                      {formatNumber(tx.quantity, 2)} @ {formatEuro(tx.price_per_share!)}
+                    </div>
+                  )}
+                  <div className={`font-medium ${
+                    tx.total_amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {tx.total_amount >= 0 ? '+' : ''}{formatEuro(Math.abs(tx.total_amount))}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>

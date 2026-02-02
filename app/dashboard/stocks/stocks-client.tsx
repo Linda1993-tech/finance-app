@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Stock, StockTransaction } from '@/lib/types/database'
 import { formatEuro, formatNumber } from '@/lib/utils/currency-format'
 import { AddStockForm } from './add-stock-form'
@@ -16,6 +16,37 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
   const [showAddStock, setShowAddStock] = useState(false)
   const [showAddTransaction, setShowAddTransaction] = useState(false)
   const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({})
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Fetch live prices on mount
+  const fetchPrices = async () => {
+    if (initialStocks.length === 0) return
+    
+    setIsRefreshing(true)
+    const tickers = initialStocks.map((s) => s.ticker).join(',')
+    
+    try {
+      const response = await fetch(`/api/stocks/quote?tickers=${tickers}`)
+      const data = await response.json()
+      
+      if (data.quotes) {
+        const prices: Record<string, number> = {}
+        Object.entries(data.quotes).forEach(([ticker, quote]: [string, any]) => {
+          prices[ticker] = quote.price
+        })
+        setCurrentPrices(prices)
+      }
+    } catch (error) {
+      console.error('Error fetching stock prices:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Fetch prices on mount
+  useEffect(() => {
+    fetchPrices()
+  }, [])
 
   // Calculate portfolio stats
   const totalValue = initialStocks.reduce((sum, stock) => {
@@ -97,16 +128,24 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
         {/* Action Buttons */}
         <div className="flex gap-3 mb-6">
           <button
-            onClick={() => setShowAddStock(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
-          >
-            <span className="text-lg">➕</span> Add Holding
-          </button>
-          <button
             onClick={() => setShowAddTransaction(true)}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
           >
             <span className="text-lg">💰</span> Add Transaction
+          </button>
+          <button
+            onClick={fetchPrices}
+            disabled={isRefreshing}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="text-lg">{isRefreshing ? '⏳' : '🔄'}</span> 
+            {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
+          </button>
+          <button
+            onClick={() => setShowAddStock(true)}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+          >
+            <span className="text-lg">✏️</span> Manual Entry
           </button>
         </div>
 

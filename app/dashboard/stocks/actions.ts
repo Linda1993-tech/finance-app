@@ -259,3 +259,39 @@ export async function calculatePortfolioStats(currentPrices: Record<string, numb
     totalGainLossPercentage,
   }
 }
+
+// ============== STOCK PRICES ==============
+
+export async function fetchStockPrices(tickers: string[]): Promise<Record<string, number>> {
+  const prices: Record<string, number> = {}
+
+  for (const ticker of tickers) {
+    try {
+      const response = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+          next: { revalidate: 300 }, // Cache for 5 minutes
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        const result = data.chart?.result?.[0]
+
+        if (result?.meta) {
+          const currentPrice = result.meta.regularMarketPrice || result.meta.previousClose
+          if (currentPrice) {
+            prices[ticker] = currentPrice
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching price for ${ticker}:`, error)
+    }
+  }
+
+  return prices
+}

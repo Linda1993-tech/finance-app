@@ -6,6 +6,7 @@ import { formatEuro, formatNumber } from '@/lib/utils/currency-format'
 import { AddStockForm } from './add-stock-form'
 import { AddTransactionForm } from './add-transaction-form'
 import { HoldingCard } from './holding-card'
+import { fetchStockPrices } from './actions'
 
 type Props = {
   initialStocks: Stock[]
@@ -23,19 +24,11 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
     if (initialStocks.length === 0) return
     
     setIsRefreshing(true)
-    const tickers = initialStocks.map((s) => s.ticker).join(',')
     
     try {
-      const response = await fetch(`/api/stocks/quote?tickers=${tickers}`)
-      const data = await response.json()
-      
-      if (data.quotes) {
-        const prices: Record<string, number> = {}
-        Object.entries(data.quotes).forEach(([ticker, quote]: [string, any]) => {
-          prices[ticker] = quote.price
-        })
-        setCurrentPrices(prices)
-      }
+      const tickers = initialStocks.map((s) => s.ticker)
+      const prices = await fetchStockPrices(tickers)
+      setCurrentPrices(prices)
     } catch (error) {
       console.error('Error fetching stock prices:', error)
     } finally {

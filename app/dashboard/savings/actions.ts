@@ -204,6 +204,7 @@ export async function addSavingsEntry(input: {
   entry_type: 'balance' | 'deposit' | 'withdrawal'
   amount: number
   notes?: string
+  transaction_id?: string
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
@@ -226,6 +227,7 @@ export async function addSavingsEntry(input: {
     entry_type: input.entry_type,
     amount: input.amount,
     notes: input.notes || null,
+    transaction_id: input.transaction_id || null,
   })
 
   if (error) {
@@ -334,5 +336,103 @@ export async function calculateSavingsStats(accountId: string): Promise<SavingsS
     totalInterest,
     interestRate,
     entries,
+  }
+}
+
+/**
+ * Get transfer transactions that haven't been linked to savings yet
+ */
+export async function getUnlinkedTransfers() {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  // Get all transfer transactions
+  const { data: transfers, error: transfersError } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('is_transfer', true)
+    .order('transaction_date', { ascending: false })
+
+  if (transfersError) {
+    console.error('Error fetching transfers:', transfersError)
+    throw new Error('Failed to fetch transfers')
+  }
+
+  // Get all linked transaction IDs
+  const { data: linkedEntries, error: linkedError } = await supabase
+    .from('savings_entries')
+    .select('transaction_id')
+    .eq('user_id', user.id)
+    .not('transaction_id', 'is', null)
+
+  if (linkedError) {
+    console.error('Error fetching linked entries:', linkedError)
+    throw new Error('Failed to fetch linked entries')
+  }
+
+  const linkedIds = new Set((linkedEntries || []).map((e) => e.transaction_id))
+
+  // Filter out already linked transactions
+  const unlinked = (transfers || []).filter((t) => !linkedIds.has(t.id))
+
+  return unlinked
+}
+
+/**
+ * Import multiple transfers as savings entries
+ */
+export async function importTransfersToSavings(
+  imports: {
+    transaction_id: string
+    account_id: string
+    entry_type: 'deposit' | 'withdrawal'
+    transaction_date: string
+    amount: number
+    description: string
+  }[]
+): Promise<{ success: boolean; imported: number; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, imported: 0, error: 'Not authenticated' }
+  }
+
+  let imported = 0
+
+  for (const imp of imports) {
+    const result = await addSavingsEntry({
+      account_id: imp.account_id,
+      entry_date: imp.transaction_date,
+      entry_type: imp.entry_type,
+      amount: Math.abs(imp.amount), // Always positive
+      notes: `Imported from transaction: ${imp.description}`,
+      transaction_id: imp.transaction_id,
+    })
+
+    if (result.success) {
+      imported++
+    } else {
+      console.error(`Failed to import transaction ${imp.transaction_id}:`, result.error)
+    }
+  }
+
+  revalidatePath('/dashboard/savings')
+  
+  return {
+    success: imported > 0,
+    imported,
+    error: imported === 0 ? 'Failed to import any transactions' : undefined,
   }
 }

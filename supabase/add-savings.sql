@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS savings_entries (
   entry_type TEXT NOT NULL CHECK (entry_type IN ('balance', 'deposit', 'withdrawal')),
   amount DECIMAL(10, 2) NOT NULL,
   notes TEXT,
+  transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL, -- Link to source transaction
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -29,6 +30,7 @@ CREATE INDEX IF NOT EXISTS idx_savings_accounts_user_id ON savings_accounts(user
 CREATE INDEX IF NOT EXISTS idx_savings_entries_user_id ON savings_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_savings_entries_account_id ON savings_entries(account_id);
 CREATE INDEX IF NOT EXISTS idx_savings_entries_entry_date ON savings_entries(entry_date);
+CREATE INDEX IF NOT EXISTS idx_savings_entries_transaction_id ON savings_entries(transaction_id);
 
 -- Enable Row Level Security
 ALTER TABLE savings_accounts ENABLE ROW LEVEL SECURITY;

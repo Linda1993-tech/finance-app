@@ -78,6 +78,7 @@ export type SavingsEntry = {
   entry_type: 'balance' | 'deposit' | 'withdrawal'
   amount: number
   notes: string | null
+  transaction_id: string | null
   created_at: string
   updated_at: string
 }

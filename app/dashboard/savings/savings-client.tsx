@@ -5,6 +5,7 @@ import type { SavingsAccount } from '@/lib/types/database'
 import { CreateAccountForm } from './create-account-form'
 import { AccountCard } from './account-card'
 import { AddEntryForm } from './add-entry-form'
+import { ImportTransfers } from './import-transfers'
 import { calculateSavingsStats, type SavingsStats } from './actions'
 
 type Props = {
@@ -15,6 +16,7 @@ export function SavingsClient({ initialAccounts }: Props) {
   const [accounts, setAccounts] = useState(initialAccounts)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showAddEntryForm, setShowAddEntryForm] = useState(false)
+  const [showImportForm, setShowImportForm] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<SavingsAccount | null>(null)
   const [accountStats, setAccountStats] = useState<Record<string, SavingsStats>>({})
   const [loading, setLoading] = useState(true)
@@ -84,13 +86,23 @@ export function SavingsClient({ initialAccounts }: Props) {
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Your Savings Accounts
         </h2>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-        >
-          <span className="text-lg">+</span>
-          Add Account
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowImportForm(true)}
+            disabled={accounts.length === 0}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <span className="text-lg">📥</span>
+            Import Transfers
+          </button>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <span className="text-lg">+</span>
+            Add Account
+          </button>
+        </div>
       </div>
 
       {/* Create Account Modal */}
@@ -144,6 +156,40 @@ export function SavingsClient({ initialAccounts }: Props) {
                   setSelectedAccount(null)
                   window.location.reload()
                 }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Transfers Modal */}
+      {showImportForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                    Import Transfers from Transactions
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Select which transfer transactions are savings-related
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowImportForm(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+              <ImportTransfers
+                accounts={accounts}
+                onSuccess={() => {
+                  setShowImportForm(false)
+                  window.location.reload()
+                }}
+                onClose={() => setShowImportForm(false)}
               />
             </div>
           </div>

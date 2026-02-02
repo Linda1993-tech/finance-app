@@ -298,9 +298,9 @@ export async function calculateSavingsStats(accountId: string): Promise<SavingsS
     }
   }
 
-  // Get the most recent balance snapshot
+  // Get balance snapshots sorted by date
   const balanceEntries = entries.filter((e) => e.entry_type === 'balance')
-  const currentBalance = balanceEntries.length > 0 ? balanceEntries[balanceEntries.length - 1].amount : 0
+  const latestSnapshot = balanceEntries.length > 0 ? balanceEntries[balanceEntries.length - 1] : null
 
   // Calculate total deposits and withdrawals
   const totalDeposits = entries
@@ -311,15 +311,51 @@ export async function calculateSavingsStats(accountId: string): Promise<SavingsS
     .filter((e) => e.entry_type === 'withdrawal')
     .reduce((sum, e) => sum + e.amount, 0)
 
-  // Calculate interest
-  // Interest = Current Balance - (Starting Balance + Deposits - Withdrawals)
-  const startingBalance = balanceEntries.length > 0 ? balanceEntries[0].amount : 0
-  const expectedBalance = startingBalance + totalDeposits - totalWithdrawals
-  const totalInterest = currentBalance - expectedBalance
+  // Calculate current balance
+  // Current Balance = Latest Snapshot + Deposits after snapshot - Withdrawals after snapshot
+  let currentBalance = 0
+  if (latestSnapshot) {
+    const snapshotDate = new Date(latestSnapshot.entry_date)
+    const depositsAfterSnapshot = entries
+      .filter((e) => e.entry_type === 'deposit' && new Date(e.entry_date) > snapshotDate)
+      .reduce((sum, e) => sum + e.amount, 0)
+    const withdrawalsAfterSnapshot = entries
+      .filter((e) => e.entry_type === 'withdrawal' && new Date(e.entry_date) > snapshotDate)
+      .reduce((sum, e) => sum + e.amount, 0)
+    currentBalance = latestSnapshot.amount + depositsAfterSnapshot - withdrawalsAfterSnapshot
+  } else {
+    // No snapshots, just deposits - withdrawals
+    currentBalance = totalDeposits - totalWithdrawals
+  }
+
+  // Calculate interest between snapshots
+  let totalInterest = 0
+  if (balanceEntries.length >= 2) {
+    for (let i = 1; i < balanceEntries.length; i++) {
+      const prevSnapshot = balanceEntries[i - 1]
+      const currSnapshot = balanceEntries[i]
+      const prevDate = new Date(prevSnapshot.entry_date)
+      const currDate = new Date(currSnapshot.entry_date)
+
+      // Get deposits and withdrawals between these snapshots
+      const depositsBetween = entries
+        .filter((e) => e.entry_type === 'deposit' && new Date(e.entry_date) > prevDate && new Date(e.entry_date) <= currDate)
+        .reduce((sum, e) => sum + e.amount, 0)
+      const withdrawalsBetween = entries
+        .filter((e) => e.entry_type === 'withdrawal' && new Date(e.entry_date) > prevDate && new Date(e.entry_date) <= currDate)
+        .reduce((sum, e) => sum + e.amount, 0)
+
+      // Interest = (Current Snapshot - Previous Snapshot) - (Deposits - Withdrawals)
+      const expectedChange = depositsBetween - withdrawalsBetween
+      const actualChange = currSnapshot.amount - prevSnapshot.amount
+      const interestForPeriod = actualChange - expectedChange
+      totalInterest += interestForPeriod
+    }
+  }
 
   // Calculate annualized interest rate
   let interestRate = 0
-  if (balanceEntries.length >= 2 && startingBalance > 0) {
+  if (balanceEntries.length >= 2 && totalInterest !== 0) {
     const firstEntry = balanceEntries[0]
     const lastEntry = balanceEntries[balanceEntries.length - 1]
     const daysDiff = Math.max(
@@ -327,7 +363,7 @@ export async function calculateSavingsStats(accountId: string): Promise<SavingsS
       (new Date(lastEntry.entry_date).getTime() - new Date(firstEntry.entry_date).getTime()) / (1000 * 60 * 60 * 24)
     )
     const yearFraction = daysDiff / 365
-    const avgBalance = (startingBalance + currentBalance) / 2
+    const avgBalance = (firstEntry.amount + lastEntry.amount) / 2
     if (avgBalance > 0 && yearFraction > 0) {
       interestRate = (totalInterest / avgBalance / yearFraction) * 100
     }

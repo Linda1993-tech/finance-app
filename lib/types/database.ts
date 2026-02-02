@@ -83,6 +83,37 @@ export type SavingsEntry = {
   updated_at: string
 }
 
+export type Stock = {
+  id: string
+  user_id: string
+  ticker: string
+  name: string
+  quantity: number
+  average_cost: number
+  currency: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type StockTransaction = {
+  id: string
+  user_id: string
+  stock_id: string | null
+  transaction_id: string | null
+  transaction_date: string
+  transaction_type: 'buy' | 'sell' | 'dividend'
+  ticker: string
+  quantity: number | null
+  price_per_share: number | null
+  total_amount: number
+  fees: number
+  currency: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Form types for creating/updating
 export type CategoryInput = {
   name: string

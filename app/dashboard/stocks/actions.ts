@@ -331,97 +331,75 @@ export async function fetchStockPrices(tickers: string[]): Promise<Record<string
 
 export async function fetchStockQuotes(tickers: string[]): Promise<Record<string, StockQuote>> {
   const quotes: Record<string, StockQuote> = {}
+  const apiKey = process.env.ALPHA_VANTAGE_API_KEY || 'VL6OUC9I8JDD86QN' // Fallback to hardcoded key
 
   for (const ticker of tickers) {
     const formattedTicker = formatTickerForYahoo(ticker) // Format ticker (e.g., AGN -> AGN.AS)
     
     try {
-      // Fetch from quote API for more detailed info including dividends
+      // Fetch company overview from Alpha Vantage (includes price, dividend, and company info)
       const response = await fetch(
-        `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${formattedTicker}?modules=price,summaryDetail`,
+        `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${formattedTicker}&apikey=${apiKey}`,
         {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
           next: { revalidate: 300 }, // Cache for 5 minutes
         }
       )
 
-      console.log(`API Response status for ${formattedTicker}:`, response.status)
+      console.log(`Alpha Vantage API Response status for ${formattedTicker}:`, response.status)
       
       if (response.ok) {
         const data = await response.json()
-        console.log(`API Response data for ${formattedTicker}:`, JSON.stringify(data).substring(0, 500))
-        const result = data.quoteSummary?.result?.[0]
+        console.log(`Alpha Vantage API Response for ${formattedTicker}:`, JSON.stringify(data).substring(0, 500))
+        
+        // Check for API errors
+        if (data['Error Message'] || data['Note']) {
+          console.error(`Alpha Vantage error for ${formattedTicker}:`, data['Error Message'] || data['Note'])
+          continue
+        }
 
-        if (result) {
-          const price = result.price?.regularMarketPrice?.raw || result.price?.previousClose?.raw
-          const name = result.price?.shortName || result.price?.longName || ticker
-          const dividendYield = result.summaryDetail?.dividendYield?.raw
-          const trailingAnnualDividend = result.summaryDetail?.trailingAnnualDividendRate?.raw
-          
-          console.log(`Extracted data for ${ticker}:`, { price, name, dividendYield, trailingAnnualDividend })
-          
-          if (price) {
-            quotes[ticker] = {
-              price,
-              name,
-              dividendYield: dividendYield ? dividendYield * 100 : undefined, // Convert to percentage
-              trailingAnnualDividend,
-            }
-          } else {
-            console.warn(`No price found for ${formattedTicker}`)
+        // Also fetch the current price from GLOBAL_QUOTE
+        const quoteResponse = await fetch(
+          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${formattedTicker}&apikey=${apiKey}`,
+          {
+            next: { revalidate: 300 },
+          }
+        )
+
+        let currentPrice = null
+        if (quoteResponse.ok) {
+          const quoteData = await quoteResponse.json()
+          currentPrice = parseFloat(quoteData['Global Quote']?.['05. price'])
+        }
+
+        // Extract data from OVERVIEW
+        const name = data['Name']
+        const dividendYield = parseFloat(data['DividendYield']) // Already in decimal (0.03 = 3%)
+        const dividendPerShare = parseFloat(data['DividendPerShare'])
+        
+        // Use current price if available, otherwise use 50-day moving average as fallback
+        const price = currentPrice || parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage'])
+        
+        console.log(`Extracted data for ${ticker}:`, { price, name, dividendYield, dividendPerShare })
+        
+        if (price && name) {
+          quotes[ticker] = {
+            price,
+            name,
+            dividendYield: dividendYield ? dividendYield * 100 : undefined, // Convert to percentage
+            trailingAnnualDividend: dividendPerShare || undefined,
           }
         } else {
-          console.warn(`No result in quoteSummary for ${formattedTicker}`)
+          console.warn(`Incomplete data for ${formattedTicker}`)
         }
       } else {
         console.error(`API returned status ${response.status} for ${formattedTicker}`)
       }
     } catch (error) {
       console.error(`Error fetching quote for ${ticker} (formatted as ${formattedTicker}):`, error)
-      
-      // Fallback to chart API if quote API fails
-      try {
-        const fallbackResponse = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${formattedTicker}`,
-          {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            },
-            next: { revalidate: 300 },
-          }
-        )
-
-        console.log(`Fallback API Response status for ${formattedTicker}:`, fallbackResponse.status)
-        
-        if (fallbackResponse.ok) {
-          const fallbackData = await fallbackResponse.json()
-          console.log(`Fallback API Response data for ${formattedTicker}:`, JSON.stringify(fallbackData).substring(0, 500))
-          const result = fallbackData.chart?.result?.[0]
-
-          if (result?.meta) {
-            const currentPrice = result.meta.regularMarketPrice || result.meta.previousClose
-            const companyName = result.meta.shortName || result.meta.longName || ticker
-            
-            console.log(`Fallback extracted data for ${ticker}:`, { currentPrice, companyName })
-            
-            if (currentPrice) {
-              quotes[ticker] = {
-                price: currentPrice,
-                name: companyName,
-              }
-            }
-          } else {
-            console.warn(`No result in fallback chart data for ${formattedTicker}`)
-          }
-        } else {
-          console.error(`Fallback API returned status ${fallbackResponse.status} for ${formattedTicker}`)
-        }
-      } catch (fallbackError) {
-        console.error(`Fallback also failed for ${ticker} (formatted as ${formattedTicker}):`, fallbackError)
-      }
     }
+
+    // Add a small delay to avoid hitting rate limits (5 requests per minute for free tier)
+    await new Promise(resolve => setTimeout(resolve, 12000)) // 12 second delay = 5 requests/minute
   }
 
   return quotes

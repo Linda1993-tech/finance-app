@@ -6,6 +6,7 @@ import { formatEuro, formatNumber } from '@/lib/utils/currency-format'
 import { AddStockForm } from './add-stock-form'
 import { AddTransactionForm } from './add-transaction-form'
 import { HoldingCard } from './holding-card'
+import { HoldingsTable } from './holdings-table'
 import { fetchStockPrices } from './actions'
 
 type Props = {
@@ -18,6 +19,7 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
   const [showAddTransaction, setShowAddTransaction] = useState(false)
   const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({})
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table') // Default to table view
 
   // Fetch live prices on mount
   const fetchPrices = async () => {
@@ -135,27 +137,53 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 mb-6">
-          <button
-            onClick={() => setShowAddTransaction(true)}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
-          >
-            <span className="text-lg">💰</span> Add Transaction
-          </button>
-          <button
-            onClick={fetchPrices}
-            disabled={isRefreshing}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span className="text-lg">{isRefreshing ? '⏳' : '🔄'}</span> 
-            {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
-          </button>
-          <button
-            onClick={() => setShowAddStock(true)}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
-          >
-            <span className="text-lg">✏️</span> Manual Entry
-          </button>
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowAddTransaction(true)}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <span className="text-lg">💰</span> Add Transaction
+            </button>
+            <button
+              onClick={fetchPrices}
+              disabled={isRefreshing}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="text-lg">{isRefreshing ? '⏳' : '🔄'}</span> 
+              {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
+            </button>
+            <button
+              onClick={() => setShowAddStock(true)}
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <span className="text-lg">✏️</span> Manual Entry
+            </button>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex gap-2 bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              📊 Tabel
+            </button>
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                viewMode === 'cards'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              🎴 Cards
+            </button>
+          </div>
         </div>
 
         {/* Holdings */}
@@ -170,12 +198,20 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
                 No stocks yet. Add your first position to start tracking!
               </p>
               <button
-                onClick={() => setShowAddStock(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                onClick={() => setShowAddTransaction(true)}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
               >
-                Add Your First Stock
+                Add Your First Transaction
               </button>
             </div>
+          ) : viewMode === 'table' ? (
+            <HoldingsTable
+              stocks={initialStocks}
+              currentPrices={currentPrices}
+              onUpdatePrice={(ticker, price) => {
+                setCurrentPrices({ ...currentPrices, [ticker]: price })
+              }}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {initialStocks.map((stock) => (

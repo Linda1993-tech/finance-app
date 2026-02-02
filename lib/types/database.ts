@@ -66,6 +66,11 @@ export type SavingsAccount = {
   currency: string
   color: string | null
   icon: string | null
+  interest_rate: number // Annual interest rate as decimal (e.g., 0.026 for 2.6%)
+  interest_type: 'fixed' | 'variable' | 'manual' // fixed = auto-calculate, variable/manual = manual entry
+  interest_payment_frequency: 'monthly' | 'quarterly' | 'annual'
+  fixed_rate_end_date: string | null // Date when fixed rate expires (e.g., '2048-02-12')
+  last_interest_calculation_date: string | null // Last date interest was calculated
   created_at: string
   updated_at: string
 }
@@ -75,7 +80,7 @@ export type SavingsEntry = {
   user_id: string
   account_id: string
   entry_date: string
-  entry_type: 'balance' | 'deposit' | 'withdrawal'
+  entry_type: 'balance' | 'deposit' | 'withdrawal' | 'interest'
   amount: number
   notes: string | null
   transaction_id: string | null

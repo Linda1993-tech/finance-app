@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Stock, StockTransaction } from '@/lib/types/database'
 import { formatTickerForYahoo } from '@/lib/utils/ticker-formatter'
+import yahooFinance from 'yahoo-finance2'
 
 // ============== STOCKS (Holdings) ==============
 
@@ -331,100 +332,43 @@ export async function fetchStockPrices(tickers: string[]): Promise<Record<string
 
 export async function fetchStockQuotes(tickers: string[]): Promise<Record<string, StockQuote>> {
   const quotes: Record<string, StockQuote> = {}
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY || 'VL6OUC9I8JDD86QN' // Fallback to hardcoded key
 
   for (const ticker of tickers) {
-    // Try multiple ticker formats for international stocks
     const formattedTicker = formatTickerForYahoo(ticker) // Format ticker (e.g., AGN -> AGN.AS)
-    const tickersToTry = [
-      ticker, // Try original first (e.g., AGN)
-      formattedTicker, // Try with suffix (e.g., AGN.AS)
-      formattedTicker.replace('.AS', '.AMS'), // Try Alpha Vantage Amsterdam format
-    ]
     
-    let successfulData = null
-    
-    for (const tryTicker of tickersToTry) {
-      try {
-        console.log(`Trying Alpha Vantage with ticker: ${tryTicker}`)
-        
-        // Fetch company overview from Alpha Vantage (includes price, dividend, and company info)
-        const response = await fetch(
-          `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${tryTicker}&apikey=${apiKey}`,
-          {
-            next: { revalidate: 300 }, // Cache for 5 minutes
-          }
-        )
-
-        console.log(`Alpha Vantage API Response status for ${tryTicker}:`, response.status)
-        
-        if (response.ok) {
-          const data = await response.json()
-          console.log(`Alpha Vantage API Response for ${tryTicker}:`, JSON.stringify(data).substring(0, 500))
-          
-          // Check for API errors
-          if (data['Error Message'] || data['Note']) {
-            console.log(`Alpha Vantage error for ${tryTicker}:`, data['Error Message'] || data['Note'])
-            continue // Try next ticker format
-          }
-
-          // Also fetch the current price from GLOBAL_QUOTE
-          const quoteResponse = await fetch(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${tryTicker}&apikey=${apiKey}`,
-            {
-              next: { revalidate: 300 },
-            }
-          )
-
-          let currentPrice = null
-          if (quoteResponse.ok) {
-            const quoteData = await quoteResponse.json()
-            console.log(`Global Quote response for ${tryTicker}:`, JSON.stringify(quoteData).substring(0, 300))
-            currentPrice = parseFloat(quoteData['Global Quote']?.['05. price'])
-          }
-
-          // Extract data from OVERVIEW
-          const name = data['Name']
-          const dividendYield = parseFloat(data['DividendYield']) // Already in decimal (0.03 = 3%)
-          const dividendPerShare = parseFloat(data['DividendPerShare'])
-          
-          // Use current price if available, otherwise use 50-day moving average as fallback
-          const price = currentPrice || parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage'])
-          
-          console.log(`Extracted data for ${ticker} using ${tryTicker}:`, { price, name, dividendYield, dividendPerShare })
-          
-          if (price && name) {
-            successfulData = {
-              price,
-              name,
-              dividendYield: dividendYield ? dividendYield * 100 : undefined, // Convert to percentage
-              trailingAnnualDividend: dividendPerShare || undefined,
-            }
-            console.log(`✅ Successfully fetched data for ${ticker} using ${tryTicker}`)
-            break // Found valid data, stop trying other formats
-          } else {
-            console.warn(`Incomplete data for ${tryTicker} - trying next format`)
-          }
-        } else {
-          console.log(`API returned status ${response.status} for ${tryTicker}`)
-        }
-      } catch (error) {
-        console.log(`Error with ${tryTicker}:`, error)
-      }
+    try {
+      console.log(`📊 Fetching quote for ${ticker} (formatted as ${formattedTicker})`)
       
-      // Small delay between format attempts
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Fetch quote summary with all details
+      const result = await yahooFinance.quoteSummary(formattedTicker, {
+        modules: ['price', 'summaryDetail']
+      })
+      
+      console.log(`✅ Received data for ${formattedTicker}`)
+      
+      // Extract price data
+      const price = result.price?.regularMarketPrice || result.price?.previousClose
+      const name = result.price?.longName || result.price?.shortName || ticker
+      
+      // Extract dividend data
+      const dividendYield = result.summaryDetail?.dividendYield // Already as decimal (0.03 = 3%)
+      const trailingAnnualDividend = result.summaryDetail?.trailingAnnualDividendRate
+      
+      console.log(`📈 ${ticker} - Price: ${price}, Name: ${name}, Dividend Yield: ${dividendYield ? (dividendYield * 100).toFixed(2) + '%' : 'N/A'}`)
+      
+      if (price && name) {
+        quotes[ticker] = {
+          price: typeof price === 'number' ? price : 0,
+          name,
+          dividendYield: dividendYield ? dividendYield * 100 : undefined, // Convert to percentage
+          trailingAnnualDividend: trailingAnnualDividend || undefined,
+        }
+      } else {
+        console.warn(`⚠️ Incomplete data for ${formattedTicker}`)
+      }
+    } catch (error: any) {
+      console.error(`❌ Error fetching quote for ${ticker} (${formattedTicker}):`, error.message || error)
     }
-    
-    // If we found valid data, add it to quotes
-    if (successfulData) {
-      quotes[ticker] = successfulData
-    } else {
-      console.error(`❌ Failed to fetch data for ${ticker} with any ticker format`)
-    }
-
-    // Add a delay to avoid hitting rate limits (5 requests per minute for free tier)
-    await new Promise(resolve => setTimeout(resolve, 12000))
   }
 
   return quotes

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Stock, StockTransaction } from '@/lib/types/database'
+import { formatTicker } from '@/lib/utils/ticker-formatter'
 
 // ============== STOCKS (Holdings) ==============
 
@@ -332,10 +333,12 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
   const quotes: Record<string, StockQuote> = {}
 
   for (const ticker of tickers) {
+    const formattedTicker = formatTicker(ticker) // Format ticker (e.g., AGN -> AGN.AS)
+    
     try {
       // Fetch from quote API for more detailed info including dividends
       const response = await fetch(
-        `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=price,summaryDetail`,
+        `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${formattedTicker}?modules=price,summaryDetail`,
         {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -365,12 +368,12 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
         }
       }
     } catch (error) {
-      console.error(`Error fetching quote for ${ticker}:`, error)
+      console.error(`Error fetching quote for ${ticker} (formatted as ${formattedTicker}):`, error)
       
       // Fallback to chart API if quote API fails
       try {
         const fallbackResponse = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`,
+          `https://query1.finance.yahoo.com/v8/finance/chart/${formattedTicker}`,
           {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -396,7 +399,7 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
           }
         }
       } catch (fallbackError) {
-        console.error(`Fallback also failed for ${ticker}:`, fallbackError)
+        console.error(`Fallback also failed for ${ticker} (formatted as ${formattedTicker}):`, fallbackError)
       }
     }
   }

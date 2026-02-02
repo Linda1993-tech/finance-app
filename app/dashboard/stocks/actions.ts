@@ -342,12 +342,12 @@ export async function fetchStockQuotes(tickers: string[]): Promise<Record<string
       // Fetch quote summary with all details
       const result = await yahooFinance.quoteSummary(formattedTicker, {
         modules: ['price', 'summaryDetail']
-      })
+      }) as any // Type assertion to work around yahoo-finance2 types
       
       console.log(`✅ Received data for ${formattedTicker}`)
       
       // Extract price data
-      const price = result.price?.regularMarketPrice || result.price?.previousClose
+      const price = result.price?.regularMarketPrice || result.price?.previousClose || 0
       const name = result.price?.longName || result.price?.shortName || ticker
       
       // Extract dividend data

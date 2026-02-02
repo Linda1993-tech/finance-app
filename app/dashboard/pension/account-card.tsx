@@ -3,6 +3,7 @@
 import type { SavingsAccount } from '@/lib/types/database'
 import type { SavingsStats } from './actions'
 import { formatEuro, formatNumber } from '@/lib/utils/currency-format'
+import { deleteSavingsEntry } from './actions'
 
 type Props = {
   account: SavingsAccount
@@ -127,12 +128,26 @@ export function AccountCard({ account, stats, onAddEntry, onDelete }: Props) {
                     </div>
                   </div>
                 </div>
-                <div className={`font-semibold ${
-                  entry.entry_type === 'deposit' ? 'text-green-600 dark:text-green-400' :
-                  entry.entry_type === 'withdrawal' ? 'text-red-600 dark:text-red-400' :
-                  'text-blue-600 dark:text-blue-400'
-                }`}>
-                  {formatEuro(entry.amount)}
+                <div className="flex items-center gap-3">
+                  <div className={`font-semibold ${
+                    entry.entry_type === 'deposit' ? 'text-green-600 dark:text-green-400' :
+                    entry.entry_type === 'withdrawal' ? 'text-red-600 dark:text-red-400' :
+                    'text-blue-600 dark:text-blue-400'
+                  }`}>
+                    {formatEuro(entry.amount)}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (confirm('Delete this entry?')) {
+                        await deleteSavingsEntry(entry.id)
+                        window.location.reload()
+                      }
+                    }}
+                    className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors text-sm"
+                    title="Delete entry"
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
             ))}

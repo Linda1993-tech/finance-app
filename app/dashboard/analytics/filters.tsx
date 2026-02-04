@@ -16,7 +16,7 @@ export type AnalyticsFilters = {
 }
 
 export function AnalyticsFilters({ categories, availableMonths = [], onFilterChange }: FilterProps) {
-  const [dateRange, setDateRange] = useState<'3' | '6' | '12' | 'all' | 'custom'>('6')
+  const [dateRange, setDateRange] = useState<'3' | '6' | '12' | 'all' | 'custom'>('12') // Default to current year
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [specificMonth, setSpecificMonth] = useState<string | null>(null)
 
@@ -49,92 +49,56 @@ export function AnalyticsFilters({ categories, availableMonths = [], onFilterCha
     categories.filter((c) => c.parent_id === parentId)
 
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center gap-2 mb-6">
-        <span className="text-2xl">🔍</span>
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Filters</h3>
-      </div>
-      
-      <div className="space-y-6">
-        {/* Date Range Filter */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            📅 Time Period
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
+      {/* Compact Single-Row Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Time Period Dropdown */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            📅 Period:
           </label>
-          <div className="grid grid-cols-4 gap-2 mb-3">
-            <button
-              onClick={() => handleDateRangeChange('3')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                dateRange === '3'
-                  ? 'bg-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              3 months
-            </button>
-            <button
-              onClick={() => handleDateRangeChange('6')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                dateRange === '6'
-                  ? 'bg-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              6 months
-            </button>
-            <button
-              onClick={() => handleDateRangeChange('12')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                dateRange === '12'
-                  ? 'bg-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              12 months
-            </button>
-            <button
-              onClick={() => handleDateRangeChange('all')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                dateRange === 'all'
-                  ? 'bg-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              All time
-            </button>
-          </div>
-          
-          {/* Specific Month Selector */}
-          <div className="mt-3">
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-              Or select a specific month:
-            </label>
-            <select
-              value={specificMonth || ''}
-              onChange={(e) => handleMonthChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
-            >
-              <option value="">Choose a month...</option>
-              {availableMonths.map((month) => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={dateRange}
+            onChange={(e) => handleDateRangeChange(e.target.value as any)}
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
+          >
+            <option value="3">Last 3 months</option>
+            <option value="6">Last 6 months</option>
+            <option value="12">Current year (YTD)</option>
+            <option value="all">All time</option>
+          </select>
+        </div>
+
+        {/* Specific Month Picker */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            or Month:
+          </label>
+          <select
+            value={specificMonth || ''}
+            onChange={(e) => handleMonthChange(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
+          >
+            <option value="">Select month...</option>
+            {availableMonths.map((month) => (
+              <option key={month.value} value={month.value}>
+                {month.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Category Filter */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            🏷️ Filter by Category
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            🏷️ Category:
           </label>
           <select
             value={categoryId || ''}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all"
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
           >
-            <option value="">✨ All Categories</option>
+            <option value="">All Categories</option>
             {parentCategories.map((parent) => {
               const subcats = getSubcategories(parent.id)
               return (
@@ -153,43 +117,31 @@ export function AnalyticsFilters({ categories, availableMonths = [], onFilterCha
           </select>
         </div>
 
-        {/* Active Filters Display */}
-        {(dateRange !== '6' || categoryId || specificMonth) && (
-          <div className="pt-4 border-t-2 border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                ✓ Active Filters:
+        {/* Active Filter Tags */}
+        {(categoryId || specificMonth) && (
+          <div className="flex items-center gap-2 ml-auto">
+            {specificMonth && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
+                {availableMonths.find(m => m.value === specificMonth)?.label}
+                <button
+                  onClick={() => handleMonthChange('')}
+                  className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full w-4 h-4 flex items-center justify-center transition-colors"
+                >
+                  ×
+                </button>
               </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {specificMonth && (
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full text-xs font-medium shadow-md">
-                  📅 {availableMonths.find(m => m.value === specificMonth)?.label || specificMonth}
-                  <button
-                    onClick={() => handleMonthChange('')}
-                    className="hover:bg-white/20 rounded-full p-0.5 transition-colors"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {!specificMonth && dateRange !== '6' && (
-                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
-                  {dateRange === 'all' ? '♾️ All time' : `📊 ${dateRange} months`}
-                </span>
-              )}
-              {categoryId && (
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded-full text-xs font-medium">
-                  🏷️ {categories.find((c) => c.id === categoryId)?.name}
-                  <button
-                    onClick={() => handleCategoryChange('')}
-                    className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full p-0.5 transition-colors"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-            </div>
+            )}
+            {categoryId && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 rounded-full text-xs font-medium">
+                {categories.find((c) => c.id === categoryId)?.name}
+                <button
+                  onClick={() => handleCategoryChange('')}
+                  className="hover:bg-purple-200 dark:hover:bg-purple-800 rounded-full w-4 h-4 flex items-center justify-center transition-colors"
+                >
+                  ×
+                </button>
+              </span>
+            )}
           </div>
         )}
       </div>

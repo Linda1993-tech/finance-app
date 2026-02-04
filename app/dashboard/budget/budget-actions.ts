@@ -221,6 +221,144 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
 }
 
 /**
+ * Get budget status for ALL categories that have budgets set anywhere in the year
+ * Shows current month budget and spending for each category
+ */
+export async function getAllCategoriesBudgetStatus(month: number, year: number): Promise<BudgetStatus[]> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  // Get ALL budgets for this year to find unique categories
+  const { data: allYearBudgets, error: budgetError } = await supabase
+    .from('budgets')
+    .select('category_id, category:categories(id, name, icon, color, parent_id)')
+    .eq('user_id', user.id)
+    .eq('year', year)
+
+  if (budgetError) {
+    console.error('Error fetching yearly budgets:', budgetError)
+    throw new Error('Failed to fetch budgets')
+  }
+
+  // Get unique categories
+  const uniqueCategories = new Map<string, any>()
+  for (const budget of allYearBudgets || []) {
+    const categoryKey = budget.category_id || 'uncategorized'
+    if (!uniqueCategories.has(categoryKey)) {
+      uniqueCategories.set(categoryKey, budget.category)
+    }
+  }
+
+  // For each category, get the budget for the specific month
+  const { data: monthBudgets, error: monthBudgetError } = await supabase
+    .from('budgets')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('month', month)
+    .eq('year', year)
+
+  if (monthBudgetError) {
+    console.error('Error fetching month budgets:', monthBudgetError)
+    throw new Error('Failed to fetch budgets')
+  }
+
+  const monthBudgetMap = new Map<string, number>()
+  for (const budget of monthBudgets || []) {
+    const categoryKey = budget.category_id || 'uncategorized'
+    monthBudgetMap.set(categoryKey, budget.amount)
+  }
+
+  // Calculate spending for the specific month
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+  const lastDay = new Date(year, month, 0).getDate()
+  const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+  const { data: transactions, error: txError } = await supabase
+    .from('transactions')
+    .select('amount, category_id, categories(id, parent_id)')
+    .eq('user_id', user.id)
+    .eq('is_transfer', false)
+    .eq('is_income', false)
+    .gte('transaction_date', startDate)
+    .lte('transaction_date', endDate)
+
+  if (txError) {
+    console.error('Error fetching transactions:', txError)
+    throw new Error('Failed to fetch transactions')
+  }
+
+  type TransactionWithCategory = {
+    amount: number
+    category_id: string | null
+    categories: {
+      id: string
+      parent_id: string | null
+    } | null
+  }
+
+  const typedTransactions = (transactions || []) as unknown as TransactionWithCategory[]
+
+  // Calculate spending per category (including parent categories)
+  const spendingByCategory = new Map<string, number>()
+
+  for (const t of typedTransactions) {
+    const netAmount = t.amount // Can be negative (expense) or positive (reimbursement)
+    
+    // Add to specific category
+    if (t.category_id) {
+      const current = spendingByCategory.get(t.category_id) || 0
+      spendingByCategory.set(t.category_id, current + netAmount)
+      
+      // Also add to parent category if this is a subcategory
+      const category = t.categories
+      if (category?.parent_id) {
+        const parentCurrent = spendingByCategory.get(category.parent_id) || 0
+        spendingByCategory.set(category.parent_id, parentCurrent + netAmount)
+      }
+    } else {
+      const current = spendingByCategory.get('uncategorized') || 0
+      spendingByCategory.set('uncategorized', current + netAmount)
+    }
+  }
+
+  // Build budget status for each unique category
+  const statuses: BudgetStatus[] = []
+
+  for (const [categoryKey, categoryData] of uniqueCategories.entries()) {
+    const budgetAmount = monthBudgetMap.get(categoryKey) || 0
+    const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
+    const remaining = budgetAmount - spent
+    const percentage = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0
+
+    statuses.push({
+      budget: {
+        id: `${categoryKey}-${month}`, // Temporary ID
+        user_id: user.id,
+        category_id: categoryKey === 'uncategorized' ? null : categoryKey,
+        amount: budgetAmount,
+        month,
+        year,
+        created_at: '',
+        updated_at: '',
+        category: categoryData,
+      },
+      spent,
+      remaining,
+      percentage,
+    })
+  }
+
+  return statuses
+}
+
+/**
  * Create or update a budget
  */
 export async function upsertBudget(

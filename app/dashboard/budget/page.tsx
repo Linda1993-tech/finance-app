@@ -12,10 +12,9 @@ export default async function BudgetPage() {
   const currentYear = now.getFullYear()
 
   // Fetch budget statuses for ALL categories in the yearly table
-  const [yearlyBudgetStatuses, categories, allCategoriesStatus] = await Promise.all([
-    getBudgetStatus(currentMonth, currentYear, 'yearly'), // For the summary cards
+  const [categories, allCategoriesStatus] = await Promise.all([
     getCategories(),
-    getAllCategoriesBudgetStatus(currentMonth, currentYear), // For the budget list (current month data for all categories)
+    getAllCategoriesBudgetStatus(currentMonth, currentYear), // For EVERYTHING (cards + budget list)
   ])
 
   return (
@@ -44,7 +43,7 @@ export default async function BudgetPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Toggle, Cards, and Set Budget Form */}
         <BudgetClient
-          initialBudgetStatuses={yearlyBudgetStatuses}
+          initialBudgetStatuses={allCategoriesStatus}
           categories={categories}
           currentMonth={currentMonth}
           currentYear={currentYear}

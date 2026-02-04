@@ -152,9 +152,9 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
   let statuses: BudgetStatus[]
   
   if (viewMode === 'yearly') {
-    // For yearly view: group by category and SUM all budgets across all months
+    // For yearly view: for each category, take a representative monthly budget and multiply by 12
     const categoryBudgets = new Map<string, { 
-      totalAmount: number, // Sum of all monthly budgets in the table
+      monthlyBudgets: { month: number; amount: number }[], // All monthly budgets for this category
       category: any,
       budgetIds: string[]
     }>()
@@ -164,12 +164,11 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
       const existing = categoryBudgets.get(categoryKey)
       
       if (existing) {
-        // Add this month's budget to the total
-        existing.totalAmount += budget.amount
+        existing.monthlyBudgets.push({ month: budget.month, amount: budget.amount })
         existing.budgetIds.push(budget.id)
       } else {
         categoryBudgets.set(categoryKey, {
-          totalAmount: budget.amount,
+          monthlyBudgets: [{ month: budget.month, amount: budget.amount }],
           category: budget.category,
           budgetIds: [budget.id]
         })
@@ -178,8 +177,22 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
     
     // Now build statuses from the grouped data
     statuses = Array.from(categoryBudgets.entries()).map(([categoryKey, data]) => {
+      // Pick a representative monthly budget: prefer January (month 1), otherwise use the most common value
+      let representativeBudget = 0
+      const januaryBudget = data.monthlyBudgets.find(b => b.month === 1)
+      
+      if (januaryBudget) {
+        // Use January budget as the baseline
+        representativeBudget = januaryBudget.amount
+      } else {
+        // Use the most common budget value, or the average if all different
+        const amounts = data.monthlyBudgets.map(b => b.amount)
+        const sum = amounts.reduce((a, b) => a + b, 0)
+        representativeBudget = sum / amounts.length // Average
+      }
+      
       const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
-      const yearlyBudget = data.totalAmount // Sum of all months
+      const yearlyBudget = representativeBudget * 12 // Multiply by 12 for yearly total
       const remaining = yearlyBudget - spent
       const percentage = yearlyBudget > 0 ? (spent / yearlyBudget) * 100 : 0
       
@@ -188,7 +201,7 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
           id: data.budgetIds[0], // Use first budget ID
           user_id: user.id,
           category_id: categoryKey === 'uncategorized' ? null : categoryKey,
-          amount: yearlyBudget, // Show yearly total (sum of all months in table)
+          amount: yearlyBudget, // Show yearly total (monthly budget × 12)
           month,
           year,
           created_at: '',

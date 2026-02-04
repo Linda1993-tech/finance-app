@@ -72,7 +72,7 @@ export async function getMonthlyTrends(months: number = 6) {
       month,
       income: Math.round(data.income * 100) / 100,
       expenses: Math.round(Math.abs(data.expenses) * 100) / 100, // Display as positive (net spending)
-      net: Math.round((data.income - data.expenses) * 100) / 100,
+      net: Math.round((data.income + data.expenses) * 100) / 100, // data.expenses is already negative, so add to get net
     }))
     .sort((a, b) => a.month.localeCompare(b.month))
 

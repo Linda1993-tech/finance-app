@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getBudgetStatus } from '@/app/dashboard/budget/budget-actions'
+import { getBudgetStatus, getAllCategoriesBudgetStatus } from '@/app/dashboard/budget/budget-actions'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -8,7 +8,12 @@ export async function GET(request: NextRequest) {
   const viewMode = (searchParams.get('viewMode') || 'monthly') as 'monthly' | 'yearly'
 
   try {
-    const budgetStatuses = await getBudgetStatus(month, year, viewMode)
+    // For monthly view, use getAllCategoriesBudgetStatus to show all categories from yearly table
+    // For yearly view, use getBudgetStatus to get yearly totals
+    const budgetStatuses = viewMode === 'monthly' 
+      ? await getAllCategoriesBudgetStatus(month, year)
+      : await getBudgetStatus(month, year, viewMode)
+    
     return NextResponse.json(budgetStatuses)
   } catch (error) {
     console.error('Error fetching budget status:', error)

@@ -1,4 +1,5 @@
 import { getYearlyBudgetOverview } from './budget-year-overview-actions'
+import { EditableBudgetCell } from './editable-budget-cell'
 
 type Props = {
   year: number
@@ -93,53 +94,17 @@ export async function BudgetYearOverview({ year }: Props) {
                   const spentNet = category.spentByMonth[monthNum] || 0
                   // Display absolute value (net spending after reimbursements)
                   const spent = Math.abs(spentNet)
-                  const percentage = budget > 0 ? (spent / budget) * 100 : 0
-                  const hasData = budget > 0 || spent > 0
-
-                  let bgColor = ''
-                  if (hasData) {
-                    if (percentage > 100) {
-                      bgColor = 'bg-red-100 dark:bg-red-900/20'
-                    } else if (percentage > 80) {
-                      bgColor = 'bg-orange-100 dark:bg-orange-900/20'
-                    } else if (budget > 0) {
-                      bgColor = 'bg-green-100 dark:bg-green-900/20'
-                    }
-                  }
 
                   return (
-                    <td
+                    <EditableBudgetCell
                       key={month}
-                      className={`px-3 py-3 text-center text-sm ${bgColor}`}
-                    >
-                      {hasData ? (
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-gray-100">
-                            €{spent.toFixed(0)}
-                          </div>
-                          {budget > 0 && (
-                            <div className="text-xs text-gray-600 dark:text-gray-400">
-                              / €{budget.toFixed(0)}
-                            </div>
-                          )}
-                          {budget > 0 && (
-                            <div
-                              className={`text-xs font-semibold ${
-                                percentage > 100
-                                  ? 'text-red-600 dark:text-red-400'
-                                  : percentage > 80
-                                  ? 'text-orange-600 dark:text-orange-400'
-                                  : 'text-green-600 dark:text-green-400'
-                              }`}
-                            >
-                              {percentage.toFixed(0)}%
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 dark:text-gray-600">-</span>
-                      )}
-                    </td>
+                      categoryId={category.category_id}
+                      categoryName={category.category_name}
+                      month={monthNum}
+                      year={year}
+                      currentBudget={budget}
+                      spent={spent}
+                    />
                   )
                 })}
                 <td className="px-4 py-3 text-right text-sm font-semibold">

@@ -204,6 +204,18 @@ export async function upsertBudget(
 }
 
 /**
+ * Update budget for a specific month (inline editing)
+ */
+export async function updateBudgetForMonth(input: {
+  category_id: string
+  month: number
+  budget: number
+}): Promise<{ success: boolean; error?: string }> {
+  const year = new Date().getFullYear()
+  return upsertBudget(input.category_id, input.budget, input.month, year)
+}
+
+/**
  * Delete a budget
  */
 export async function deleteBudget(budgetId: string): Promise<{ success: boolean; error?: string }> {

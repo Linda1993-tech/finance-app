@@ -123,8 +123,9 @@ export async function getYearlyBudgetOverview(year: number): Promise<MonthlyBudg
       }
     }
     
-    // Calculate total budget (12 months)
-    data.totalBudget = budgetAmount * 12
+    // Calculate total budget by summing all actual month values (not just amount * 12)
+    // This ensures edited months are included in the total
+    data.totalBudget = Object.values(data.budgetByMonth).reduce((sum, amount) => sum + amount, 0)
   }
 
   // Calculate total spent for each category (all 12 months)

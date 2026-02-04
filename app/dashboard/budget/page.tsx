@@ -55,11 +55,6 @@ export default async function BudgetPage() {
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
             {currentYear} Budget × Month Breakdown
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Compare budgeted vs actual spending for each category across all months. 
-            Monthly budgets automatically apply to all 12 months. Each category shows only its own spending 
-            (subcategories do not roll up to parents).
-          </p>
           <BudgetYearOverview year={currentYear} />
         </div>
 

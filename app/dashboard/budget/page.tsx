@@ -40,11 +40,13 @@ export default async function BudgetPage() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Toggle, Cards, and Set Budget Form */}
         <BudgetClient
           initialBudgetStatuses={budgetStatuses}
           categories={categories}
           currentMonth={currentMonth}
           currentYear={currentYear}
+          showBudgetList={false}
         />
 
         {/* Yearly Budget Overview */}
@@ -59,6 +61,15 @@ export default async function BudgetPage() {
           </p>
           <BudgetYearOverview year={currentYear} />
         </div>
+
+        {/* Current Month Budget Status - Moved below yearly table */}
+        <BudgetClient
+          initialBudgetStatuses={budgetStatuses}
+          categories={categories}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          showBudgetList={true}
+        />
       </main>
     </div>
   )

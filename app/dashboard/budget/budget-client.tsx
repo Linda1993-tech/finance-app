@@ -12,9 +12,10 @@ type Props = {
   categories: Category[]
   currentMonth: number
   currentYear: number
+  showBudgetList?: boolean // If true, only show the budget list. If false, show everything else.
 }
 
-export function BudgetClient({ initialBudgetStatuses, categories, currentMonth, currentYear }: Props) {
+export function BudgetClient({ initialBudgetStatuses, categories, currentMonth, currentYear, showBudgetList = false }: Props) {
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly')
   const [budgetStatuses, setBudgetStatuses] = useState<BudgetStatus[]>(initialBudgetStatuses)
   const [isLoading, setIsLoading] = useState(false)
@@ -47,6 +48,27 @@ export function BudgetClient({ initialBudgetStatuses, categories, currentMonth, 
     year: 'numeric',
   })
 
+  // If showBudgetList is true, only render the budget list section
+  if (showBudgetList) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+          Current Month Budget Status
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          All categories with budgets for {monthName}. Categories are sorted by priority: 
+          over-budget first, then by percentage used.
+        </p>
+        {isLoading ? (
+          <div className="text-center py-8 text-gray-600 dark:text-gray-400">Loading...</div>
+        ) : (
+          <BudgetList budgetStatuses={budgetStatuses} viewMode="monthly" />
+        )}
+      </div>
+    )
+  }
+
+  // Otherwise, render the top section (toggle, cards, form)
   return (
     <>
       {/* View Mode Toggle */}
@@ -144,18 +166,6 @@ export function BudgetClient({ initialBudgetStatuses, categories, currentMonth, 
           💡 Tip: Set monthly budgets here. Switch to "Yearly" view to see how you're tracking against
           your annual targets (monthly budget × 12).
         </p>
-      </div>
-
-      {/* Budget List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          {viewMode === 'monthly' ? 'Current Month' : `${currentYear} Year-to-Date`} Budget Status
-        </h2>
-        {isLoading ? (
-          <div className="text-center py-8 text-gray-600 dark:text-gray-400">Loading...</div>
-        ) : (
-          <BudgetList budgetStatuses={budgetStatuses} viewMode={viewMode} />
-        )}
       </div>
     </>
   )

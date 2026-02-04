@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateBudgetForMonth } from './budget-actions'
 
 type Props = {
@@ -20,6 +21,7 @@ export function EditableBudgetCell({
   currentBudget,
   spent,
 }: Props) {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [budget, setBudget] = useState(currentBudget.toString())
   const [isSaving, setIsSaving] = useState(false)
@@ -53,7 +55,7 @@ export function EditableBudgetCell({
         budget: budgetValue,
       })
       setIsEditing(false)
-      window.location.reload() // Refresh to show updated data
+      router.refresh() // Refresh server components to show updated data
     } catch (error) {
       alert('Failed to save budget')
     } finally {

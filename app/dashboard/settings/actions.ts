@@ -128,8 +128,8 @@ export async function getTransactionDebugInfo() {
   const dutchStartDate = preferences?.dutch_account_starting_date
   const spanishStartDate = preferences?.spanish_account_starting_date
 
-  const dutchAfterStart = dutchTx.filter(t => !t.is_transfer && (!dutchStartDate || t.transaction_date > dutchStartDate))
-  const spanishAfterStart = spanishTx.filter(t => !t.is_transfer && (!spanishStartDate || t.transaction_date > spanishStartDate))
+  const dutchAfterStart = dutchTx.filter(t => (!dutchStartDate || t.transaction_date > dutchStartDate))
+  const spanishAfterStart = spanishTx.filter(t => (!spanishStartDate || t.transaction_date > spanishStartDate))
 
   const dutchTotal = dutchAfterStart.reduce((sum, t) => sum + t.amount, 0)
   const spanishTotal = spanishAfterStart.reduce((sum, t) => sum + t.amount, 0)

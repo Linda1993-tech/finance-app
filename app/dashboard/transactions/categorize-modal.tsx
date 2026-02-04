@@ -131,12 +131,9 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
                 const subcats = getSubcategories(parent.id)
                 return (
                   <optgroup key={parent.id} label={`${parent.icon || ''} ${parent.name}`}>
-                    <option value={parent.id} disabled className="text-gray-400">
-                      {parent.icon} {parent.name} (select subcategory below)
-                    </option>
                     {subcats.map((sub) => (
                       <option key={sub.id} value={sub.id}>
-                        &nbsp;&nbsp;└ {sub.icon} {sub.name}
+                        {sub.icon} {sub.name}
                       </option>
                     ))}
                   </optgroup>

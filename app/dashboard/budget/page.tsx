@@ -3,6 +3,9 @@ import { getCategories } from '../categories/actions'
 import { BudgetClient } from './budget-client'
 import { BudgetYearOverview } from './budget-year-overview'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function BudgetPage() {
   const now = new Date()
   const currentMonth = now.getMonth() + 1

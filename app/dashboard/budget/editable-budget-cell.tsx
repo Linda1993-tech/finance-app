@@ -54,11 +54,10 @@ export function EditableBudgetCell({
         month,
         budget: budgetValue,
       })
-      setIsEditing(false)
-      router.refresh() // Refresh server components to show updated data
+      // Force a hard reload to ensure totals recalculate
+      window.location.href = window.location.href
     } catch (error) {
       alert('Failed to save budget')
-    } finally {
       setIsSaving(false)
     }
   }

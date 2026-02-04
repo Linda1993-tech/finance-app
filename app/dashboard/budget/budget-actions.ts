@@ -152,9 +152,10 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
   let statuses: BudgetStatus[]
   
   if (viewMode === 'yearly') {
-    // For yearly view: for each category, take a representative monthly budget and multiply by 12
+    // For yearly view: auto-fill missing months and sum all 12 months
+    // This matches the logic in budget-year-overview-actions.ts
     const categoryBudgets = new Map<string, { 
-      monthlyBudgets: { month: number; amount: number }[], // All monthly budgets for this category
+      budgetByMonth: { [month: number]: number }, // Budget for each month (1-12)
       category: any,
       budgetIds: string[]
     }>()
@@ -164,11 +165,11 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
       const existing = categoryBudgets.get(categoryKey)
       
       if (existing) {
-        existing.monthlyBudgets.push({ month: budget.month, amount: budget.amount })
+        existing.budgetByMonth[budget.month] = budget.amount
         existing.budgetIds.push(budget.id)
       } else {
         categoryBudgets.set(categoryKey, {
-          monthlyBudgets: [{ month: budget.month, amount: budget.amount }],
+          budgetByMonth: { [budget.month]: budget.amount },
           category: budget.category,
           budgetIds: [budget.id]
         })
@@ -177,22 +178,21 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
     
     // Now build statuses from the grouped data
     statuses = Array.from(categoryBudgets.entries()).map(([categoryKey, data]) => {
-      // Pick a representative monthly budget: prefer January (month 1), otherwise use the most common value
-      let representativeBudget = 0
-      const januaryBudget = data.monthlyBudgets.find(b => b.month === 1)
+      // Auto-fill missing months with a representative budget
+      const filledMonths = Object.keys(data.budgetByMonth).map(Number)
+      const representativeBudget = data.budgetByMonth[filledMonths[0]] || 0 // Use first available month
       
-      if (januaryBudget) {
-        // Use January budget as the baseline
-        representativeBudget = januaryBudget.amount
-      } else {
-        // Use the most common budget value, or the average if all different
-        const amounts = data.monthlyBudgets.map(b => b.amount)
-        const sum = amounts.reduce((a, b) => a + b, 0)
-        representativeBudget = sum / amounts.length // Average
+      // Fill in all 12 months
+      for (let m = 1; m <= 12; m++) {
+        if (!data.budgetByMonth[m]) {
+          data.budgetByMonth[m] = representativeBudget
+        }
       }
       
+      // Sum all 12 months to get yearly total
+      const yearlyBudget = Object.values(data.budgetByMonth).reduce((sum, amount) => sum + amount, 0)
+      
       const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
-      const yearlyBudget = representativeBudget * 12 // Multiply by 12 for yearly total
       const remaining = yearlyBudget - spent
       const percentage = yearlyBudget > 0 ? (spent / yearlyBudget) * 100 : 0
       
@@ -201,7 +201,7 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
           id: data.budgetIds[0], // Use first budget ID
           user_id: user.id,
           category_id: categoryKey === 'uncategorized' ? null : categoryKey,
-          amount: yearlyBudget, // Show yearly total (monthly budget × 12)
+          amount: yearlyBudget, // Show yearly total (sum of all 12 months)
           month,
           year,
           created_at: '',

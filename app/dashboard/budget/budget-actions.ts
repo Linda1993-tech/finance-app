@@ -256,23 +256,39 @@ export async function getAllCategoriesBudgetStatus(month: number, year: number):
     }
   }
 
-  // For each category, get the budget for the specific month
-  const { data: monthBudgets, error: monthBudgetError } = await supabase
+  // Get ALL budgets for the year (to find budget for each category)
+  const { data: allBudgets, error: allBudgetsError } = await supabase
     .from('budgets')
     .select('*')
     .eq('user_id', user.id)
-    .eq('month', month)
     .eq('year', year)
 
-  if (monthBudgetError) {
-    console.error('Error fetching month budgets:', monthBudgetError)
+  if (allBudgetsError) {
+    console.error('Error fetching all budgets:', allBudgetsError)
     throw new Error('Failed to fetch budgets')
   }
 
+  // Build budget map: prefer current month, otherwise use any month's budget
   const monthBudgetMap = new Map<string, number>()
-  for (const budget of monthBudgets || []) {
+  const fallbackBudgetMap = new Map<string, number>()
+  
+  for (const budget of allBudgets || []) {
     const categoryKey = budget.category_id || 'uncategorized'
-    monthBudgetMap.set(categoryKey, budget.amount)
+    
+    if (budget.month === month) {
+      // Current month budget - use this!
+      monthBudgetMap.set(categoryKey, budget.amount)
+    } else if (!fallbackBudgetMap.has(categoryKey)) {
+      // Fallback: use budget from another month if current month not found
+      fallbackBudgetMap.set(categoryKey, budget.amount)
+    }
+  }
+  
+  // Merge fallback budgets into main map
+  for (const [categoryKey, amount] of fallbackBudgetMap.entries()) {
+    if (!monthBudgetMap.has(categoryKey)) {
+      monthBudgetMap.set(categoryKey, amount)
+    }
   }
 
   // Calculate spending for the specific month

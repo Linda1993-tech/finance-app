@@ -64,24 +64,37 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
     throw new Error('Not authenticated')
   }
 
-  // Get budgets for this month
-  const budgets = await getBudgets(month, year)
-
   // Calculate date range based on view mode
   let startDate: string
   let endDate: string
-  let budgetMultiplier = 1
+  let budgets: any[]
 
   if (viewMode === 'yearly') {
     // For yearly view: Jan 1 to Dec 31 of the year
     startDate = `${year}-01-01`
     endDate = `${year}-12-31`
-    budgetMultiplier = 12 // Multiply monthly budget by 12
+    
+    // Get ALL budgets for the entire year (all 12 months)
+    const { data: yearlyBudgets, error: budgetError } = await supabase
+      .from('budgets')
+      .select('*, category:categories(id, name, icon, color, parent_id)')
+      .eq('user_id', user.id)
+      .eq('year', year)
+    
+    if (budgetError) {
+      console.error('Error fetching yearly budgets:', budgetError)
+      throw new Error('Failed to fetch budgets')
+    }
+    
+    budgets = yearlyBudgets || []
   } else {
     // For monthly view: first to last day of the month
     startDate = `${year}-${String(month).padStart(2, '0')}-01`
     const lastDay = new Date(year, month, 0).getDate()
     endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    
+    // Get budgets for this specific month
+    budgets = await getBudgets(month, year)
   }
 
   const { data: transactions, error } = await supabase
@@ -136,23 +149,73 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
   }
 
   // Build budget status for each budget
-  const statuses: BudgetStatus[] = budgets.map((budget) => {
-    const categoryKey = budget.category_id || 'uncategorized'
-    const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
-    const targetAmount = budget.amount * budgetMultiplier // Apply multiplier for yearly view
-    const remaining = targetAmount - spent
-    const percentage = targetAmount > 0 ? (spent / targetAmount) * 100 : 0
-
-    return {
-      budget: {
-        ...budget,
-        amount: targetAmount, // Return adjusted amount for display
-      },
-      spent,
-      remaining,
-      percentage,
+  let statuses: BudgetStatus[]
+  
+  if (viewMode === 'yearly') {
+    // For yearly view: group by category and sum all 12 months
+    const categoryBudgets = new Map<string, { 
+      totalAmount: number, 
+      category: any,
+      budgetIds: string[] 
+    }>()
+    
+    for (const budget of budgets) {
+      const categoryKey = budget.category_id || 'uncategorized'
+      const existing = categoryBudgets.get(categoryKey)
+      
+      if (existing) {
+        existing.totalAmount += budget.amount
+        existing.budgetIds.push(budget.id)
+      } else {
+        categoryBudgets.set(categoryKey, {
+          totalAmount: budget.amount,
+          category: budget.category,
+          budgetIds: [budget.id]
+        })
+      }
     }
-  })
+    
+    // Now build statuses from the grouped data
+    statuses = Array.from(categoryBudgets.entries()).map(([categoryKey, data]) => {
+      const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
+      const targetAmount = data.totalAmount
+      const remaining = targetAmount - spent
+      const percentage = targetAmount > 0 ? (spent / targetAmount) * 100 : 0
+      
+      return {
+        budget: {
+          id: data.budgetIds[0], // Use first budget ID
+          user_id: user.id,
+          category_id: categoryKey === 'uncategorized' ? null : categoryKey,
+          amount: targetAmount,
+          month,
+          year,
+          created_at: '',
+          updated_at: '',
+          category: data.category,
+        },
+        spent,
+        remaining,
+        percentage,
+      }
+    })
+  } else {
+    // For monthly view: use budgets as-is
+    statuses = budgets.map((budget) => {
+      const categoryKey = budget.category_id || 'uncategorized'
+      const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
+      const targetAmount = budget.amount
+      const remaining = targetAmount - spent
+      const percentage = targetAmount > 0 ? (spent / targetAmount) * 100 : 0
+
+      return {
+        budget,
+        spent,
+        remaining,
+        percentage,
+      }
+    })
+  }
 
   return statuses
 }

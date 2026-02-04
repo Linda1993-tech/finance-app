@@ -152,11 +152,12 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
   let statuses: BudgetStatus[]
   
   if (viewMode === 'yearly') {
-    // For yearly view: group by category and sum all 12 months
+    // For yearly view: group by category and calculate yearly budget (monthly budget × 12)
     const categoryBudgets = new Map<string, { 
-      totalAmount: number, 
+      monthlyBudget: number, // Representative monthly budget
       category: any,
-      budgetIds: string[] 
+      budgetIds: string[],
+      monthsCount: number
     }>()
     
     for (const budget of budgets) {
@@ -164,13 +165,16 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
       const existing = categoryBudgets.get(categoryKey)
       
       if (existing) {
-        existing.totalAmount += budget.amount
+        // Take the most recent/highest budget as representative
+        existing.monthlyBudget = Math.max(existing.monthlyBudget, budget.amount)
         existing.budgetIds.push(budget.id)
+        existing.monthsCount++
       } else {
         categoryBudgets.set(categoryKey, {
-          totalAmount: budget.amount,
+          monthlyBudget: budget.amount,
           category: budget.category,
-          budgetIds: [budget.id]
+          budgetIds: [budget.id],
+          monthsCount: 1
         })
       }
     }
@@ -178,16 +182,16 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
     // Now build statuses from the grouped data
     statuses = Array.from(categoryBudgets.entries()).map(([categoryKey, data]) => {
       const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
-      const targetAmount = data.totalAmount
-      const remaining = targetAmount - spent
-      const percentage = targetAmount > 0 ? (spent / targetAmount) * 100 : 0
+      const yearlyBudget = data.monthlyBudget * 12 // Multiply monthly budget by 12
+      const remaining = yearlyBudget - spent
+      const percentage = yearlyBudget > 0 ? (spent / yearlyBudget) * 100 : 0
       
       return {
         budget: {
           id: data.budgetIds[0], // Use first budget ID
           user_id: user.id,
           category_id: categoryKey === 'uncategorized' ? null : categoryKey,
-          amount: targetAmount,
+          amount: yearlyBudget, // Show yearly total
           month,
           year,
           created_at: '',

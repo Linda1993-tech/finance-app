@@ -106,32 +106,42 @@ export async function getWealthOverview(): Promise<WealthOverview> {
   // Get user preferences for starting balances
   const { data: preferences } = await supabase
     .from('user_preferences')
-    .select('dutch_account_starting_balance, spanish_account_starting_balance')
+    .select('dutch_account_starting_balance, dutch_account_starting_date, spanish_account_starting_balance, spanish_account_starting_date')
     .eq('user_id', user.id)
     .single()
 
   const dutchStartingBalance = preferences?.dutch_account_starting_balance || 0
+  const dutchStartingDate = preferences?.dutch_account_starting_date
   const spanishStartingBalance = preferences?.spanish_account_starting_balance || 0
+  const spanishStartingDate = preferences?.spanish_account_starting_date
 
-  // Calculate current account balance from transactions
+  // Calculate current account balance from transactions AFTER starting date
   const { data: transactions } = await supabase
     .from('transactions')
-    .select('amount, is_transfer, account_type')
+    .select('amount, is_transfer, account_type, transaction_date')
     .eq('user_id', user.id)
 
   let dutchAccountBalance = dutchStartingBalance
   let spanishAccountBalance = spanishStartingBalance
 
   if (transactions) {
-    // Dutch account transactions
+    // Dutch account transactions AFTER starting date
     const dutchTransactionsTotal = transactions
-      .filter((t) => !t.is_transfer && t.account_type === 'dutch')
+      .filter((t) => 
+        !t.is_transfer && 
+        t.account_type === 'dutch' &&
+        (!dutchStartingDate || t.transaction_date > dutchStartingDate)
+      )
       .reduce((sum, t) => sum + t.amount, 0)
     dutchAccountBalance = dutchStartingBalance + dutchTransactionsTotal
 
-    // Spanish account transactions
+    // Spanish account transactions AFTER starting date
     const spanishTransactionsTotal = transactions
-      .filter((t) => !t.is_transfer && t.account_type === 'spanish')
+      .filter((t) => 
+        !t.is_transfer && 
+        t.account_type === 'spanish' &&
+        (!spanishStartingDate || t.transaction_date > spanishStartingDate)
+      )
       .reduce((sum, t) => sum + t.amount, 0)
     spanishAccountBalance = spanishStartingBalance + spanishTransactionsTotal
   }

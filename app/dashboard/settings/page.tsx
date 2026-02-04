@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getUserPreferences } from './actions'
+import { getUserPreferences, getTransactionDebugInfo } from './actions'
 import { SettingsForm } from './settings-form'
+import { DebugAccounts } from './debug-accounts'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -15,6 +16,7 @@ export default async function SettingsPage() {
   }
 
   const preferences = await getUserPreferences()
+  const debugInfo = await getTransactionDebugInfo()
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -41,7 +43,10 @@ export default async function SettingsPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <SettingsForm preferences={preferences} />
+        <div className="space-y-6">
+          <SettingsForm preferences={preferences} />
+          {debugInfo && <DebugAccounts debug={debugInfo} />}
+        </div>
       </main>
     </div>
   )

@@ -92,3 +92,72 @@ export async function updateUserPreferences(input: {
   revalidatePath('/dashboard/settings')
   return { success: true }
 }
+
+/**
+ * Debug: Get transaction summary for troubleshooting
+ */
+export async function getTransactionDebugInfo() {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return null
+  }
+
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select('transaction_date, amount, account_type, is_transfer, description')
+    .eq('user_id', user.id)
+    .order('transaction_date', { ascending: false })
+
+  const { data: preferences } = await supabase
+    .from('user_preferences')
+    .select('*')
+    .eq('user_id', user.id)
+    .single()
+
+  // Group transactions by account_type
+  const dutchTx = transactions?.filter(t => t.account_type === 'dutch') || []
+  const spanishTx = transactions?.filter(t => t.account_type === 'spanish') || []
+  const otherTx = transactions?.filter(t => t.account_type === 'other' || !t.account_type) || []
+
+  // Calculate totals after starting date
+  const dutchStartDate = preferences?.dutch_account_starting_date
+  const spanishStartDate = preferences?.spanish_account_starting_date
+
+  const dutchAfterStart = dutchTx.filter(t => !t.is_transfer && (!dutchStartDate || t.transaction_date > dutchStartDate))
+  const spanishAfterStart = spanishTx.filter(t => !t.is_transfer && (!spanishStartDate || t.transaction_date > spanishStartDate))
+
+  const dutchTotal = dutchAfterStart.reduce((sum, t) => sum + t.amount, 0)
+  const spanishTotal = spanishAfterStart.reduce((sum, t) => sum + t.amount, 0)
+
+  return {
+    preferences,
+    totalTransactions: transactions?.length || 0,
+    byAccountType: {
+      dutch: dutchTx.length,
+      spanish: spanishTx.length,
+      other: otherTx.length,
+    },
+    afterStartingDate: {
+      dutch: {
+        count: dutchAfterStart.length,
+        total: dutchTotal,
+        transactions: dutchAfterStart.slice(0, 10), // First 10 for review
+      },
+      spanish: {
+        count: spanishAfterStart.length,
+        total: spanishTotal,
+        transactions: spanishAfterStart.slice(0, 10),
+      },
+    },
+    calculatedBalance: {
+      dutch: (preferences?.dutch_account_starting_balance || 0) + dutchTotal,
+      spanish: (preferences?.spanish_account_starting_balance || 0) + spanishTotal,
+      total: (preferences?.dutch_account_starting_balance || 0) + (preferences?.spanish_account_starting_balance || 0) + dutchTotal + spanishTotal,
+    },
+  }
+}

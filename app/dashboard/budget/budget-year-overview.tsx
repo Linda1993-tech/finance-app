@@ -98,8 +98,8 @@ export async function BudgetYearOverview({ year }: Props) {
                   return (
                     <EditableBudgetCell
                       key={month}
-                      categoryId={category.category_id}
-                      categoryName={category.category_name}
+                      categoryId={category.category?.id || ''}
+                      categoryName={category.category?.name || ''}
                       month={monthNum}
                       year={year}
                       currentBudget={budget}

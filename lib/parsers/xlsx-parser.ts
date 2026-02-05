@@ -1,5 +1,5 @@
 /**
- * XLSX Parser for ING ES format
+ * XLSX Parser for Spanish bank format
  */
 
 import * as XLSX from 'xlsx'
@@ -7,7 +7,7 @@ import { parseAmount, parseDate } from '../utils/transaction-utils'
 import type { ParsedTransaction, ParseResult } from './csv-parser'
 
 /**
- * Parse ING ES XLSX/XLS file
+ * Parse Spanish bank XLSX/XLS file
  * Expected columns:
  * - F. VALOR (Date in DD/MM/YYYY format)
  * - DESCRIPCION (Description)
@@ -36,7 +36,7 @@ export function parseINGESXLSX(fileBuffer: ArrayBuffer): ParseResult {
       return { success: false, error: 'No data found in Excel file' }
     }
 
-    // ING ES files have headers on row 4 (index 3)
+    // Spanish bank files typically have headers on row 4 (index 3)
     // Rows 1-3 contain account information
     const headerRowIndex = 3
     
@@ -53,7 +53,7 @@ export function parseINGESXLSX(fileBuffer: ArrayBuffer): ParseResult {
     const dataRows = arrayData.slice(headerRowIndex + 1)
     const transactions: ParsedTransaction[] = []
 
-    // Find column indices (look for ING ES specific columns)
+    // Find column indices (look for Spanish bank format columns)
     const dateColIndex = findColumnIndex(headers, ['f. valor', 'valor', 'fecha'])
     const descColIndex = findColumnIndex(headers, ['descripcion', 'concepto'])
     const amountColIndex = findColumnIndex(headers, ['importe'])
@@ -78,7 +78,7 @@ export function parseINGESXLSX(fileBuffer: ArrayBuffer): ParseResult {
         // Get description
         const description = String(rowArray[descColIndex] || '').trim() || 'Unknown'
         
-        // Parse amount (already negative for expenses in ING ES files)
+        // Parse amount (already negative for expenses in Spanish bank files)
         const amountStr = String(rowArray[amountColIndex] || '0').trim()
         if (!amountStr || amountStr === '0' || amountStr === '0,00') continue
         

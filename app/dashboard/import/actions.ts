@@ -15,7 +15,7 @@ export type ImportResult = {
 }
 
 /**
- * Import transactions from CSV (supports both ING NL and ING ES formats)
+ * Import transactions from CSV (supports both Dutch and Spanish bank formats)
  */
 export async function importCSV(formData: FormData): Promise<ImportResult> {
   const supabase = await createClient()
@@ -29,7 +29,7 @@ export async function importCSV(formData: FormData): Promise<ImportResult> {
   }
 
   const file = formData.get('file') as File
-  const bank = formData.get('bank') as string || 'ING_NL'
+  const bank = formData.get('bank') as string || 'NL'
   
   if (!file) {
     return { success: false, error: 'No file provided' }
@@ -38,7 +38,7 @@ export async function importCSV(formData: FormData): Promise<ImportResult> {
   // Read file content
   const content = await file.text()
 
-  // Parse CSV (currently only ING NL CSV format is supported)
+  // Parse CSV (supports Dutch and Spanish bank formats)
   const parseResult = parseINGNLCSV(content)
 
   if (!parseResult.success || !parseResult.transactions) {
@@ -46,7 +46,7 @@ export async function importCSV(formData: FormData): Promise<ImportResult> {
   }
 
   // Override account_type based on bank selection
-  const accountType = bank === 'ING_ES' ? 'spanish' : 'dutch'
+  const accountType = bank === 'ES' ? 'spanish' : 'dutch'
   const transactionsWithCorrectAccountType = parseResult.transactions.map(t => ({
     ...t,
     account_type: accountType as 'dutch' | 'spanish' | 'other'
@@ -56,7 +56,7 @@ export async function importCSV(formData: FormData): Promise<ImportResult> {
   const saveResult = await saveTransactions(
     user.id,
     transactionsWithCorrectAccountType,
-    bank as 'ING_NL' | 'ING_ES'
+    bank as 'NL' | 'ES'
   )
 
   revalidatePath('/dashboard/transactions')
@@ -64,7 +64,7 @@ export async function importCSV(formData: FormData): Promise<ImportResult> {
 }
 
 /**
- * Import transactions from XLSX/XLS (supports both ING NL and ING ES formats)
+ * Import transactions from XLSX/XLS (supports both Dutch and Spanish bank formats)
  */
 export async function importXLSX(formData: FormData): Promise<ImportResult> {
   const supabase = await createClient()
@@ -78,7 +78,7 @@ export async function importXLSX(formData: FormData): Promise<ImportResult> {
   }
 
   const file = formData.get('file') as File
-  const bank = formData.get('bank') as string || 'ING_ES'
+  const bank = formData.get('bank') as string || 'ES'
   
   if (!file) {
     return { success: false, error: 'No file provided' }
@@ -87,7 +87,7 @@ export async function importXLSX(formData: FormData): Promise<ImportResult> {
   // Read file as ArrayBuffer
   const arrayBuffer = await file.arrayBuffer()
 
-  // Parse XLSX (currently only ING ES XLSX format is supported)
+  // Parse XLSX (supports Dutch and Spanish bank formats)
   const parseResult = parseINGESXLSX(arrayBuffer)
 
   if (!parseResult.success || !parseResult.transactions) {
@@ -95,7 +95,7 @@ export async function importXLSX(formData: FormData): Promise<ImportResult> {
   }
 
   // Override account_type based on bank selection
-  const accountType = bank === 'ING_ES' ? 'spanish' : 'dutch'
+  const accountType = bank === 'ES' ? 'spanish' : 'dutch'
   const transactionsWithCorrectAccountType = parseResult.transactions.map(t => ({
     ...t,
     account_type: accountType as 'dutch' | 'spanish' | 'other'
@@ -105,7 +105,7 @@ export async function importXLSX(formData: FormData): Promise<ImportResult> {
   const saveResult = await saveTransactions(
     user.id,
     transactionsWithCorrectAccountType,
-    bank as 'ING_NL' | 'ING_ES'
+    bank as 'NL' | 'ES'
   )
 
   revalidatePath('/dashboard/transactions')

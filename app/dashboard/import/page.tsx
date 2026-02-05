@@ -12,7 +12,7 @@ export default function ImportPage() {
                 Import Transactions
               </h1>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Upload CSV or XLS/XLSX files from ING Netherlands or ING Spain
+                Upload CSV or XLS/XLSX files from your Dutch or Spanish bank account
               </p>
             </div>
             <a
@@ -49,22 +49,24 @@ export default function ImportPage() {
             </h3>
             <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
               <div>
-                <strong className="text-gray-900 dark:text-white">ING Netherlands:</strong>
+                <strong className="text-gray-900 dark:text-white">🇳🇱 Dutch Bank Format:</strong>
                 <p className="ml-4">
                   Supports CSV or XLSX format<br />
-                  Expected columns: Datum, Naam/Omschrijving, Bedrag (EUR), Af Bij
+                  Expected columns: Datum, Naam/Omschrijving, Bedrag (EUR), Af Bij<br />
+                  <span className="text-xs text-gray-500">(Works with ING, ABN AMRO, Rabobank, etc.)</span>
                 </p>
               </div>
               <div>
-                <strong className="text-gray-900 dark:text-white">ING Spain:</strong>
+                <strong className="text-gray-900 dark:text-white">🇪🇸 Spanish Bank Format:</strong>
                 <p className="ml-4">
                   Supports CSV or XLSX format<br />
-                  Expected columns: F. VALOR, DESCRIPCIÓN, IMPORTE (€)
+                  Expected columns: F. VALOR, DESCRIPCIÓN, IMPORTE (€)<br />
+                  <span className="text-xs text-gray-500">(Works with ING, BBVA, Santander, etc.)</span>
                 </p>
               </div>
             </div>
             <p className="mt-4 text-xs text-gray-500 dark:text-gray-500">
-              💡 Tip: Select your bank, then upload either CSV or XLSX format. The system
+              💡 Tip: Select your account country, then upload either CSV or XLSX format. The system
               will automatically detect and parse your file.
             </p>
           </div>

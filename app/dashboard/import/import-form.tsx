@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { importCSV, importXLSX } from './actions'
 
-type BankType = 'ING_NL' | 'ING_ES'
+type BankType = 'NL' | 'ES'
 
 export function ImportForm() {
-  const [bank, setBank] = useState<BankType>('ING_NL')
+  const [bank, setBank] = useState<BankType>('NL')
   const [file, setFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [result, setResult] = useState<{
@@ -72,32 +72,32 @@ export function ImportForm() {
       {/* Bank Selection */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          Select Your Bank
+          Select Account Country
         </label>
         <div className="grid grid-cols-2 gap-4">
           <button
             type="button"
-            onClick={() => setBank('ING_NL')}
+            onClick={() => setBank('NL')}
             className={`p-4 border-2 rounded-lg text-left transition-all ${
-              bank === 'ING_NL'
+              bank === 'NL'
                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                 : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
             }`}
           >
-            <div className="font-semibold text-gray-900 dark:text-white">ING Netherlands</div>
+            <div className="font-semibold text-gray-900 dark:text-white">🇳🇱 Dutch Bank Account</div>
             <div className="text-sm text-gray-600 dark:text-gray-400">CSV or XLSX format</div>
           </button>
 
           <button
             type="button"
-            onClick={() => setBank('ING_ES')}
+            onClick={() => setBank('ES')}
             className={`p-4 border-2 rounded-lg text-left transition-all ${
-              bank === 'ING_ES'
+              bank === 'ES'
                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                 : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
             }`}
           >
-            <div className="font-semibold text-gray-900 dark:text-white">ING Spain</div>
+            <div className="font-semibold text-gray-900 dark:text-white">🇪🇸 Spanish Bank Account</div>
             <div className="text-sm text-gray-600 dark:text-gray-400">CSV or XLSX format</div>
           </button>
         </div>

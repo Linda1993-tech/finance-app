@@ -1,5 +1,5 @@
 /**
- * CSV Parser for ING NL format
+ * CSV Parser for Dutch bank format
  */
 
 import Papa from 'papaparse'
@@ -21,7 +21,7 @@ export type ParseResult = {
 }
 
 /**
- * Parse ING NL CSV file
+ * Parse Dutch bank CSV file
  * Expected columns:
  * - Datum (Date in YYYYMMDD format)
  * - Naam / Omschrijving (Description)
@@ -33,7 +33,7 @@ export function parseINGNLCSV(fileContent: string): ParseResult {
     const result = Papa.parse<Record<string, string>>(fileContent, {
       header: true,
       skipEmptyLines: true,
-      delimiter: ';', // ING NL uses semicolon
+      delimiter: ';', // Dutch banks typically use semicolon
       transformHeader: (header) => header.trim().replace(/"/g, ''), // Remove quotes
     })
 

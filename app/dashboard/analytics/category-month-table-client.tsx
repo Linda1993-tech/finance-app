@@ -12,27 +12,78 @@ type Props = {
 export function CategoryMonthTableClient({ categoryData, monthlyTotals, months }: Props) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
-  // Group categories by parent
-  const parentCategories = categoryData.filter(cat => !cat.parentCategoryName)
-  const subcategoriesByParent = new Map<string, CategoryMonthData[]>()
+  // Separate parent categories and subcategories
+  const subcategories = categoryData.filter(cat => cat.parentCategoryName !== null)
+  const categoriesWithoutParent = categoryData.filter(cat => cat.parentCategoryName === null)
   
-  for (const cat of categoryData) {
-    if (cat.parentCategoryName) {
-      const parentData = categoryData.find(p => p.categoryName === cat.parentCategoryName)
-      if (parentData) {
-        const existing = subcategoriesByParent.get(parentData.categoryId) || []
-        existing.push(cat)
-        subcategoriesByParent.set(parentData.categoryId, existing)
+  // Find all unique parent names from subcategories
+  const parentNames = new Set(subcategories.map(cat => cat.parentCategoryName))
+  
+  // Build parent category data by aggregating subcategories
+  const parentCategoriesMap = new Map<string, CategoryMonthData>()
+  
+  for (const parentName of parentNames) {
+    if (!parentName) continue
+    
+    const children = subcategories.filter(cat => cat.parentCategoryName === parentName)
+    
+    // Check if parent category has direct transactions
+    const parentDirectData = categoriesWithoutParent.find(cat => cat.categoryName === parentName)
+    
+    if (parentDirectData) {
+      // Parent has direct transactions, use that data
+      parentCategoriesMap.set(parentName, parentDirectData)
+    } else {
+      // Parent has no direct transactions, aggregate from children
+      const aggregatedMonthlyAmounts: Record<string, number> = {}
+      let aggregatedTotal = 0
+      
+      for (const child of children) {
+        aggregatedTotal += child.total
+        for (const [month, amount] of Object.entries(child.monthlyAmounts)) {
+          aggregatedMonthlyAmounts[month] = (aggregatedMonthlyAmounts[month] || 0) + amount
+        }
       }
+      
+      parentCategoriesMap.set(parentName, {
+        categoryId: `parent-${parentName}`,
+        categoryName: parentName,
+        categoryIcon: children[0]?.categoryIcon || null,
+        categoryColor: children[0]?.categoryColor || null,
+        parentCategoryName: null,
+        monthlyAmounts: aggregatedMonthlyAmounts,
+        total: aggregatedTotal,
+      })
+    }
+  }
+  
+  // Standalone categories (no parent, no children)
+  const standaloneCategories = categoriesWithoutParent.filter(
+    cat => !parentNames.has(cat.categoryName)
+  )
+  
+  // All parent categories (including standalone)
+  const allParentCategories = [
+    ...Array.from(parentCategoriesMap.values()),
+    ...standaloneCategories,
+  ]
+  
+  // Group subcategories by parent name
+  const subcategoriesByParent = new Map<string, CategoryMonthData[]>()
+  for (const cat of subcategories) {
+    if (cat.parentCategoryName) {
+      const existing = subcategoriesByParent.get(cat.parentCategoryName) || []
+      existing.push(cat)
+      subcategoriesByParent.set(cat.parentCategoryName, existing)
     }
   }
 
-  const toggleCategory = (categoryId: string) => {
+  const toggleCategory = (parentName: string) => {
     const newExpanded = new Set(expandedCategories)
-    if (newExpanded.has(categoryId)) {
-      newExpanded.delete(categoryId)
+    if (newExpanded.has(parentName)) {
+      newExpanded.delete(parentName)
     } else {
-      newExpanded.add(categoryId)
+      newExpanded.add(parentName)
     }
     setExpandedCategories(newExpanded)
   }
@@ -96,10 +147,10 @@ export function CategoryMonthTableClient({ categoryData, monthlyTotals, months }
             </tr>
 
             {/* Parent Categories (with subcategories) */}
-            {parentCategories.map((parent, idx) => {
-              const subcategories = subcategoriesByParent.get(parent.categoryId) || []
-              const hasSubcategories = subcategories.length > 0
-              const isExpanded = expandedCategories.has(parent.categoryId)
+            {allParentCategories.map((parent, idx) => {
+              const children = subcategoriesByParent.get(parent.categoryName) || []
+              const hasSubcategories = children.length > 0
+              const isExpanded = expandedCategories.has(parent.categoryName)
 
               return (
                 <>
@@ -114,7 +165,7 @@ export function CategoryMonthTableClient({ categoryData, monthlyTotals, months }
                       <div className="flex items-center gap-2">
                         {hasSubcategories && (
                           <button
-                            onClick={() => toggleCategory(parent.categoryId)}
+                            onClick={() => toggleCategory(parent.categoryName)}
                             className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                           >
                             {isExpanded ? '▼' : '▶'}
@@ -148,7 +199,7 @@ export function CategoryMonthTableClient({ categoryData, monthlyTotals, months }
                   </tr>
 
                   {/* Subcategory Rows (only if expanded) */}
-                  {isExpanded && subcategories.map((sub) => (
+                  {isExpanded && children.map((sub) => (
                     <tr
                       key={sub.categoryId}
                       className="bg-gray-50/50 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-700/30"

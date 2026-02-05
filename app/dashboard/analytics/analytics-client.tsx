@@ -28,7 +28,7 @@ export function AnalyticsClient({
   categories,
   currentMonth,
 }: Props) {
-  const [filters, setFilters] = useState<Filters>({ dateRange: '6', categoryId: null, specificMonth: null })
+  const [filters, setFilters] = useState<Filters>({ dateRange: '12', categoryId: null, specificMonth: null })
   const [monthlyData, setMonthlyData] = useState(initialMonthlyTrends)
   const [categoryData, setCategoryData] = useState(initialCategorySpending)
   const [currentMonthData, setCurrentMonthData] = useState(initialCurrentMonthSpending)
@@ -80,6 +80,11 @@ export function AnalyticsClient({
     ? ((currentMonthFromData.income - previousMonth.income) / previousMonth.income) * 100
     : 0
 
+  // Use the selected month's data for display, or fallback to current month
+  const displayMonth = filters.specificMonth 
+    ? initialMonthlyTrends.find(m => m.month === filters.specificMonth) || currentMonth
+    : currentMonth
+
   // Calculate averages
   const totalExpenses = monthlyData.reduce((sum, m) => sum + m.expenses, 0)
   const avgMonthlyExpense = monthlyData.length > 0 ? totalExpenses / monthlyData.length : 0
@@ -108,9 +113,11 @@ export function AnalyticsClient({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Current Month */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="text-sm text-gray-600 dark:text-gray-400">Current Month</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            {filters.specificMonth ? 'Selected Month' : 'Current Month'}
+          </div>
           <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-            {new Date(currentMonth.month + '-01').toLocaleDateString('en-US', {
+            {new Date(displayMonth.month + '-01').toLocaleDateString('en-US', {
               month: 'long',
               year: 'numeric',
             })}
@@ -126,7 +133,7 @@ export function AnalyticsClient({
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="text-sm text-gray-600 dark:text-gray-400">Income</div>
           <div className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-            {formatEuro(currentMonth.income)}
+            {formatEuro(displayMonth.income)}
           </div>
           {previousMonth && incomeChange !== 0 && (
             <div
@@ -145,7 +152,7 @@ export function AnalyticsClient({
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="text-sm text-gray-600 dark:text-gray-400">Expenses</div>
           <div className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
-            {formatEuro(currentMonth.expenses)}
+            {formatEuro(displayMonth.expenses)}
           </div>
           {previousMonth && expenseChange !== 0 && (
             <div
@@ -165,15 +172,15 @@ export function AnalyticsClient({
           <div className="text-sm text-gray-600 dark:text-gray-400">Net</div>
           <div
             className={`text-2xl font-bold mt-1 ${
-              currentMonth.net >= 0
+              displayMonth.net >= 0
                 ? 'text-green-600 dark:text-green-400'
                 : 'text-red-600 dark:text-red-400'
             }`}
           >
-            {formatEuro(currentMonth.net)}
+            {formatEuro(displayMonth.net)}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            {currentMonth.net >= 0 ? 'Surplus' : 'Deficit'}
+            {displayMonth.net >= 0 ? 'Surplus' : 'Deficit'}
           </div>
         </div>
       </div>

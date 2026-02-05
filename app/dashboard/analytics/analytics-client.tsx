@@ -47,9 +47,10 @@ export function AnalyticsClient({
     }
     setMonthlyData(filteredMonthly)
 
-    // Fetch category data for specific month if selected
-    async function fetchMonthData() {
+    // Fetch category data based on filter selection
+    async function fetchCategoryData() {
       if (filters.specificMonth) {
+        // Fetch data for specific month
         try {
           const response = await fetch(`/api/analytics/category-spending?month=${filters.specificMonth}`)
           const monthData = await response.json()
@@ -70,9 +71,10 @@ export function AnalyticsClient({
           console.error('Error fetching month data:', error)
         }
       } else {
-        // Use initial data and filter by category if selected
+        // For period filters (not specific month), use all-time category data
+        // This shows aggregate spending across all time, which is better than just one month
         let filteredCategory = initialCategorySpending
-        let filteredCurrentMonth = initialCurrentMonthSpending
+        let filteredCurrentMonth = initialCategorySpending // Use all-time, not just current month!
 
         if (filters.categoryId) {
           filteredCategory = filteredCategory.filter(
@@ -92,7 +94,7 @@ export function AnalyticsClient({
       }
     }
 
-    fetchMonthData()
+    fetchCategoryData()
   }, [filters, initialMonthlyTrends, initialCategorySpending, initialCurrentMonthSpending, categories])
 
   // Calculate month-over-month change
@@ -113,9 +115,9 @@ export function AnalyticsClient({
     : monthlyData.length > 0
     ? {
         month: monthlyData[monthlyData.length - 1].month, // Most recent month in filtered data
-        income: monthlyData.reduce((sum, m) => sum + m.income, 0) / monthlyData.length, // Average income
-        expenses: monthlyData.reduce((sum, m) => sum + m.expenses, 0) / monthlyData.length, // Average expenses
-        net: monthlyData.reduce((sum, m) => sum + m.net, 0) / monthlyData.length, // Average net
+        income: monthlyData.reduce((sum, m) => sum + m.income, 0), // TOTAL income (not average)
+        expenses: monthlyData.reduce((sum, m) => sum + m.expenses, 0), // TOTAL expenses (not average)
+        net: monthlyData.reduce((sum, m) => sum + m.net, 0), // TOTAL net (not average)
         transactionCount: 0
       }
     : currentMonth
@@ -170,7 +172,7 @@ export function AnalyticsClient({
           )}
           {!filters.specificMonth && monthlyData.length > 0 && (
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              Average per month
+              Total for {monthlyData.length} month{monthlyData.length !== 1 ? 's' : ''}
             </div>
           )}
         </div>

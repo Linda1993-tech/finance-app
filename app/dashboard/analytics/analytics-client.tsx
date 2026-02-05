@@ -28,7 +28,7 @@ export function AnalyticsClient({
   categories,
   currentMonth,
 }: Props) {
-  const [filters, setFilters] = useState<Filters>({ dateRange: '12', categoryId: null, specificMonth: null })
+  const [filters, setFilters] = useState<Filters>({ dateRange: '12', specificMonth: null })
   const [monthlyData, setMonthlyData] = useState(initialMonthlyTrends)
   const [categoryData, setCategoryData] = useState(initialCategorySpending)
   const [currentMonthData, setCurrentMonthData] = useState(initialCurrentMonthSpending)
@@ -54,43 +54,15 @@ export function AnalyticsClient({
         try {
           const response = await fetch(`/api/analytics/category-spending?month=${filters.specificMonth}`)
           const monthData = await response.json()
-          
-          // Apply category filter if selected
-          let filteredData = monthData
-          if (filters.categoryId) {
-            filteredData = monthData.filter(
-              (c: any) =>
-                categories.find((cat) => cat.name === c.category)?.id === filters.categoryId ||
-                categories.find((cat) => cat.name === c.category)?.parent_id === filters.categoryId
-            )
-          }
-          
-          setCurrentMonthData(filteredData)
-          setCategoryData(filteredData)
+          setCurrentMonthData(monthData)
+          setCategoryData(monthData)
         } catch (error) {
           console.error('Error fetching month data:', error)
         }
       } else {
-        // For period filters (not specific month), use all-time category data
-        // This shows aggregate spending across all time, which is better than just one month
-        let filteredCategory = initialCategorySpending
-        let filteredCurrentMonth = initialCategorySpending // Use all-time, not just current month!
-
-        if (filters.categoryId) {
-          filteredCategory = filteredCategory.filter(
-            (c) =>
-              categories.find((cat) => cat.name === c.category)?.id === filters.categoryId ||
-              categories.find((cat) => cat.name === c.category)?.parent_id === filters.categoryId
-          )
-          filteredCurrentMonth = filteredCurrentMonth.filter(
-            (c) =>
-              categories.find((cat) => cat.name === c.category)?.id === filters.categoryId ||
-              categories.find((cat) => cat.name === c.category)?.parent_id === filters.categoryId
-          )
-        }
-
-        setCategoryData(filteredCategory)
-        setCurrentMonthData(filteredCurrentMonth)
+        // For period filters, use all-time category data
+        setCategoryData(initialCategorySpending)
+        setCurrentMonthData(initialCategorySpending)
       }
     }
 
@@ -252,7 +224,6 @@ export function AnalyticsClient({
         </div>
         <div className="text-xs opacity-75 mt-3">
           Based on {monthlyData.length} month{monthlyData.length !== 1 ? 's' : ''} of data
-          {filters.categoryId && ' (filtered)'}
         </div>
       </div>
 
@@ -260,7 +231,6 @@ export function AnalyticsClient({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Income vs Expenses Trend
-          {filters.categoryId && ' (Filtered)'}
         </h2>
         <MonthlyTrendsChart data={monthlyData} />
       </div>

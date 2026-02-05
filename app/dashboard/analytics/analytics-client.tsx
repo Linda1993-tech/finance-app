@@ -47,25 +47,52 @@ export function AnalyticsClient({
     }
     setMonthlyData(filteredMonthly)
 
-    // Filter category data
-    let filteredCategory = initialCategorySpending
-    let filteredCurrentMonth = initialCurrentMonthSpending
+    // Fetch category data for specific month if selected
+    async function fetchMonthData() {
+      if (filters.specificMonth) {
+        try {
+          const response = await fetch(`/api/analytics/category-spending?month=${filters.specificMonth}`)
+          const monthData = await response.json()
+          
+          // Apply category filter if selected
+          let filteredData = monthData
+          if (filters.categoryId) {
+            filteredData = monthData.filter(
+              (c: any) =>
+                categories.find((cat) => cat.name === c.category)?.id === filters.categoryId ||
+                categories.find((cat) => cat.name === c.category)?.parent_id === filters.categoryId
+            )
+          }
+          
+          setCurrentMonthData(filteredData)
+          setCategoryData(filteredData)
+        } catch (error) {
+          console.error('Error fetching month data:', error)
+        }
+      } else {
+        // Use initial data and filter by category if selected
+        let filteredCategory = initialCategorySpending
+        let filteredCurrentMonth = initialCurrentMonthSpending
 
-    if (filters.categoryId) {
-      filteredCategory = filteredCategory.filter(
-        (c) =>
-          categories.find((cat) => cat.name === c.category)?.id === filters.categoryId ||
-          categories.find((cat) => cat.name === c.category)?.parent_id === filters.categoryId
-      )
-      filteredCurrentMonth = filteredCurrentMonth.filter(
-        (c) =>
-          categories.find((cat) => cat.name === c.category)?.id === filters.categoryId ||
-          categories.find((cat) => cat.name === c.category)?.parent_id === filters.categoryId
-      )
+        if (filters.categoryId) {
+          filteredCategory = filteredCategory.filter(
+            (c) =>
+              categories.find((cat) => cat.name === c.category)?.id === filters.categoryId ||
+              categories.find((cat) => cat.name === c.category)?.parent_id === filters.categoryId
+          )
+          filteredCurrentMonth = filteredCurrentMonth.filter(
+            (c) =>
+              categories.find((cat) => cat.name === c.category)?.id === filters.categoryId ||
+              categories.find((cat) => cat.name === c.category)?.parent_id === filters.categoryId
+          )
+        }
+
+        setCategoryData(filteredCategory)
+        setCurrentMonthData(filteredCurrentMonth)
+      }
     }
 
-    setCategoryData(filteredCategory)
-    setCurrentMonthData(filteredCurrentMonth)
+    fetchMonthData()
   }, [filters, initialMonthlyTrends, initialCategorySpending, initialCurrentMonthSpending, categories])
 
   // Calculate month-over-month change
@@ -220,7 +247,9 @@ export function AnalyticsClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Current Month by Category
+            {filters.specificMonth 
+              ? `${new Date(filters.specificMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} by Category`
+              : 'Current Month by Category'}
           </h2>
           <CategoryBreakdownChart data={currentMonthData} />
         </div>
@@ -228,6 +257,7 @@ export function AnalyticsClient({
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
             Top Spending Categories
+            {filters.specificMonth && ` (${new Date(filters.specificMonth + '-01').toLocaleDateString('en-US', { month: 'short' })})`}
           </h2>
           <div className="space-y-3">
             {currentMonthData.slice(0, 10).map((cat, index) => (

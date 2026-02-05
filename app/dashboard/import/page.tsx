@@ -12,7 +12,7 @@ export default function ImportPage() {
                 Import Transactions
               </h1>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Upload CSV (ING NL) or XLS/XLSX (ING ES) files
+                Upload CSV or XLS/XLSX files from ING Netherlands or ING Spain
               </p>
             </div>
             <a
@@ -49,21 +49,23 @@ export default function ImportPage() {
             </h3>
             <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
               <div>
-                <strong className="text-gray-900 dark:text-white">ING NL (CSV):</strong>
+                <strong className="text-gray-900 dark:text-white">ING Netherlands:</strong>
                 <p className="ml-4">
-                  Expected columns: Date, Description/Name, Amount
+                  Supports CSV or XLSX format<br />
+                  Expected columns: Datum, Naam/Omschrijving, Bedrag (EUR), Af Bij
                 </p>
               </div>
               <div>
-                <strong className="text-gray-900 dark:text-white">ING ES (XLS/XLSX):</strong>
+                <strong className="text-gray-900 dark:text-white">ING Spain:</strong>
                 <p className="ml-4">
-                  Expected columns: Fecha, Concepto/Descripción, Importe
+                  Supports CSV or XLSX format<br />
+                  Expected columns: F. VALOR, DESCRIPCIÓN, IMPORTE (€)
                 </p>
               </div>
             </div>
             <p className="mt-4 text-xs text-gray-500 dark:text-gray-500">
-              💡 Tip: If import fails, make sure your file has headers and the column
-              names match the expected format.
+              💡 Tip: Select your bank, then upload either CSV or XLSX format. The system
+              will automatically detect and parse your file.
             </p>
           </div>
         </div>

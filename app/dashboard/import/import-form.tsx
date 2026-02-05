@@ -14,7 +14,7 @@ export function ImportForm() {
     message: string
   } | null>(null)
 
-  const acceptedFileTypes = bank === 'ING_NL' ? '.csv' : '.xls,.xlsx'
+  const acceptedFileTypes = '.csv,.xls,.xlsx'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -25,11 +25,16 @@ export function ImportForm() {
 
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('bank', bank)
 
     try {
-      const importResult = bank === 'ING_NL' 
-        ? await importCSV(formData)
-        : await importXLSX(formData)
+      // Detect file type by extension
+      const fileName = file.name.toLowerCase()
+      const isXLSX = fileName.endsWith('.xlsx') || fileName.endsWith('.xls')
+      
+      const importResult = isXLSX 
+        ? await importXLSX(formData)
+        : await importCSV(formData)
 
       if (importResult.success) {
         let message = `✅ Successfully imported ${importResult.count} new transaction${importResult.count === 1 ? '' : 's'}!`
@@ -80,7 +85,7 @@ export function ImportForm() {
             }`}
           >
             <div className="font-semibold text-gray-900 dark:text-white">ING Netherlands</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">CSV format</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">CSV or XLSX format</div>
           </button>
 
           <button
@@ -93,7 +98,7 @@ export function ImportForm() {
             }`}
           >
             <div className="font-semibold text-gray-900 dark:text-white">ING Spain</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">XLS/XLSX format</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">CSV or XLSX format</div>
           </button>
         </div>
       </div>
@@ -149,7 +154,7 @@ export function ImportForm() {
         disabled={!file || isUploading}
         className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
       >
-        {isUploading ? 'Importing...' : `Import ${bank === 'ING_NL' ? 'CSV' : 'XLSX'} File`}
+        {isUploading ? 'Importing...' : 'Import Transactions'}
       </button>
     </form>
   )

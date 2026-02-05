@@ -107,10 +107,27 @@ export function AnalyticsClient({
     ? ((currentMonthFromData.income - previousMonth.income) / previousMonth.income) * 100
     : 0
 
-  // Use the selected month's data for display, or fallback to current month
+  // Calculate display data based on filter selection
   const displayMonth = filters.specificMonth 
     ? initialMonthlyTrends.find(m => m.month === filters.specificMonth) || currentMonth
+    : monthlyData.length > 0
+    ? {
+        month: monthlyData[monthlyData.length - 1].month, // Most recent month in filtered data
+        income: monthlyData.reduce((sum, m) => sum + m.income, 0) / monthlyData.length, // Average income
+        expenses: monthlyData.reduce((sum, m) => sum + m.expenses, 0) / monthlyData.length, // Average expenses
+        net: monthlyData.reduce((sum, m) => sum + m.net, 0) / monthlyData.length, // Average net
+        transactionCount: 0
+      }
     : currentMonth
+  
+  // Determine the period label for display
+  const periodLabel = filters.specificMonth
+    ? new Date(filters.specificMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : filters.dateRange === '12'
+    ? `Current Year (${new Date().getFullYear()})`
+    : filters.dateRange === 'all'
+    ? 'All Time'
+    : `Last ${filters.dateRange} Months`
 
   // Calculate averages
   const totalExpenses = monthlyData.reduce((sum, m) => sum + m.expenses, 0)
@@ -138,20 +155,22 @@ export function AnalyticsClient({
 
       {/* Summary Cards with Comparisons */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Current Month */}
+        {/* Current Period/Month */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            {filters.specificMonth ? 'Selected Month' : 'Current Month'}
+            {filters.specificMonth ? 'Selected Month' : 'Period'}
           </div>
           <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-            {new Date(displayMonth.month + '-01').toLocaleDateString('en-US', {
-              month: 'long',
-              year: 'numeric',
-            })}
+            {periodLabel}
           </div>
-          {previousMonth && (
+          {previousMonth && filters.specificMonth && (
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               vs {new Date(previousMonth.month + '-01').toLocaleDateString('en-US', { month: 'short' })}
+            </div>
+          )}
+          {!filters.specificMonth && monthlyData.length > 0 && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              Average per month
             </div>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { login, signup } from './actions'
+import { LogoWithText } from '../components/logo'
 
 export default function LoginPage({
   searchParams,
@@ -9,9 +10,9 @@ export default function LoginPage({
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg px-8 py-10">
-          <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">
-            WorthFlow
-          </h1>
+          <div className="flex justify-center mb-4">
+            <LogoWithText />
+          </div>
           <p className="text-center text-gray-600 dark:text-gray-400 mb-8">
             Sign in or create an account
           </p>

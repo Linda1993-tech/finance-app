@@ -97,6 +97,7 @@ export type Stock = {
   name: string
   quantity: number
   average_cost: number
+  current_price: number | null
   currency: string
   notes: string | null
   created_at: string

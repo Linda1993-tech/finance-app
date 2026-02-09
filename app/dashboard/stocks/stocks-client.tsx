@@ -7,7 +7,7 @@ import { AddStockForm } from './add-stock-form'
 import { AddTransactionForm } from './add-transaction-form'
 import { HoldingCard } from './holding-card'
 import { HoldingsTable } from './holdings-table'
-import { fetchStockQuotes, updateStockName } from './actions'
+import { fetchStockQuotes, updateStockName, updateStockPrice } from './actions'
 
 type Props = {
   initialStocks: Stock[]
@@ -45,9 +45,12 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
         if (quote.dividendYield) yields[ticker] = quote.dividendYield
         if (quote.trailingAnnualDividend) dividends[ticker] = quote.trailingAnnualDividend
         
+        // Update price in database
+        updateStockPrice(ticker, quote.price, quote.currency)
+        
         // Log which API was used
         const sourceEmoji = quote.source === 'fmp' ? '🇪🇺' : quote.source === 'yahoo' ? '🌍' : quote.source === 'alphavantage' ? '🇺🇸' : '💾'
-        console.log(`${sourceEmoji} ${ticker}: €${quote.price} (${quote.source})`)
+        console.log(`${sourceEmoji} ${ticker}: ${quote.currency} ${quote.price} (${quote.source})`)
       })
       
       setCurrentPrices(prices)

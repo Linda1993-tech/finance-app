@@ -70,35 +70,24 @@ export async function getWealthOverview(): Promise<WealthOverview> {
 
   let totalStocks = 0
   if (stocks) {
+    // Import currency converter
+    const { convertToEUR } = await import('@/lib/utils/currency-converter')
+    
     for (const stock of stocks) {
-      // Get transactions for this stock
-      const { data: transactions } = await supabase
-        .from('stock_transactions')
-        .select('*')
-        .eq('stock_id', stock.id)
-        .order('transaction_date', { ascending: true })
-
-      if (transactions) {
-        let totalShares = 0
-        let totalCost = 0
-
-        for (const tx of transactions) {
-          if (tx.transaction_type === 'buy') {
-            totalShares += tx.quantity
-            totalCost += tx.quantity * tx.price_per_share
-          } else if (tx.transaction_type === 'sell') {
-            totalShares -= tx.quantity
-            const avgCost = totalCost / (totalShares + tx.quantity)
-            totalCost -= tx.quantity * avgCost
-          }
-        }
-
-        // Use current price if available, otherwise use cost basis
-        const currentValue = stock.current_price
-          ? totalShares * stock.current_price
-          : totalCost
-
-        totalStocks += currentValue
+      // Calculate current value based on quantity and current_price
+      if (stock.quantity > 0) {
+        const priceToUse = stock.current_price || stock.average_cost
+        const stockCurrency = stock.currency || 'EUR'
+        
+        // Calculate value in stock's currency
+        const valueInStockCurrency = stock.quantity * priceToUse
+        
+        // Convert to EUR for total calculation
+        const valueInEUR = convertToEUR(valueInStockCurrency, stockCurrency)
+        
+        totalStocks += valueInEUR
+        
+        console.log(`💼 ${stock.ticker}: ${stock.quantity} x ${stockCurrency} ${priceToUse} = €${valueInEUR.toFixed(2)}`)
       }
     }
   }

@@ -107,6 +107,35 @@ export async function updateStockName(
   return { success: true }
 }
 
+export async function updateStockPrice(
+  ticker: string,
+  price: number,
+  currency: string
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return { error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('stocks')
+    .update({
+      current_price: price,
+      currency: currency,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', user.id)
+    .eq('ticker', ticker)
+
+  if (error) {
+    console.error('Error updating stock price:', error)
+    return { error: error.message }
+  }
+  
+  revalidatePath('/dashboard')
+  revalidatePath('/dashboard/stocks')
+}
+
 export async function deleteStock(id: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

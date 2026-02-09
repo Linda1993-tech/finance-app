@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Stock } from '@/lib/types/database'
 import { formatEuro, formatNumber } from '@/lib/utils/currency-format'
+import { formatWithCurrency } from '@/lib/utils/currency-converter'
 import { getDisplayTicker } from '@/lib/utils/ticker-formatter'
 import { deleteStock } from './actions'
 
@@ -113,7 +114,7 @@ export function HoldingsTable({ stocks, currentPrices, dividendYields, annualDiv
 
                 {/* Ø Koers */}
                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                  {formatEuro(stock.average_cost)}
+                  {formatWithCurrency(stock.average_cost, stock.currency)}
                 </td>
 
                 {/* Huidige Koers */}
@@ -152,19 +153,19 @@ export function HoldingsTable({ stocks, currentPrices, dividendYields, annualDiv
                       }}
                       className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      {formatEuro(currentPrice)} 📝
+                      {formatWithCurrency(currentPrice, stock.currency)} 📝
                     </button>
                   )}
                 </td>
 
                 {/* Waarde */}
                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium text-gray-900 dark:text-white">
-                  {formatEuro(marketValue)}
+                  {formatWithCurrency(marketValue, stock.currency)}
                 </td>
 
                 {/* Kostprijs */}
                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400">
-                  {formatEuro(costBasis)}
+                  {formatWithCurrency(costBasis, stock.currency)}
                 </td>
 
                 {/* Dividend Yield */}
@@ -181,7 +182,7 @@ export function HoldingsTable({ stocks, currentPrices, dividendYields, annualDiv
                 <td className={`px-4 py-3 whitespace-nowrap text-right text-sm font-medium ${
                   gainLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                 }`}>
-                  {gainLoss >= 0 ? '+' : ''}{formatEuro(gainLoss)}
+                  {gainLoss >= 0 ? '+' : ''}{formatWithCurrency(gainLoss, stock.currency)}
                 </td>
 
                 {/* W/V % */}

@@ -288,12 +288,9 @@ export async function calculatePortfolioStats(currentPrices: Record<string, numb
 
 // ============== STOCK PRICES ==============
 
-export type StockQuote = {
-  price: number
-  name: string
-  dividendYield?: number // Dividend yield as percentage
-  trailingAnnualDividend?: number // Annual dividend amount
-}
+// Import StockQuote type from multi-API
+import type { StockQuote } from '@/lib/utils/multi-stock-api'
+export type { StockQuote } from '@/lib/utils/multi-stock-api'
 
 export async function fetchStockPrices(tickers: string[]): Promise<Record<string, number>> {
   const prices: Record<string, number> = {}
@@ -330,66 +327,17 @@ export async function fetchStockPrices(tickers: string[]): Promise<Record<string
 }
 
 export async function fetchStockQuotes(tickers: string[]): Promise<Record<string, StockQuote>> {
-  const quotes: Record<string, StockQuote> = {}
-  const apiKey = process.env.FMP_API_KEY || 'sFVuM3q1W3D47IIU3p7Uyn1BSTqyxIz0' // Financial Modeling Prep API key
-
-  for (const ticker of tickers) {
-    const formattedTicker = formatTickerForYahoo(ticker) // Format ticker (e.g., AGN -> AGN.AS)
-    
-    try {
-      console.log(`📊 Fetching quote for ${ticker} (formatted as ${formattedTicker})`)
-      
-      // Fetch quote from Financial Modeling Prep
-      const quoteUrl = `https://financialmodelingprep.com/api/v3/quote/${formattedTicker}?apikey=${apiKey}`
-      const quoteResponse = await fetch(quoteUrl, { next: { revalidate: 300 } })
-      
-      if (!quoteResponse.ok) {
-        throw new Error(`FMP API returned ${quoteResponse.status}`)
-      }
-      
-      const quoteData = await quoteResponse.json()
-      
-      if (!Array.isArray(quoteData) || quoteData.length === 0) {
-        console.warn(`⚠️ No data found for ${formattedTicker}`)
-        continue
-      }
-      
-      const quote = quoteData[0]
-      const price = quote.price || 0
-      const name = quote.name || ticker
-      
-      // Fetch company profile for dividend info
-      const profileUrl = `https://financialmodelingprep.com/api/v3/profile/${formattedTicker}?apikey=${apiKey}`
-      const profileResponse = await fetch(profileUrl, { next: { revalidate: 300 } })
-      
-      let dividendYield = undefined
-      let trailingAnnualDividend = undefined
-      
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json()
-        if (Array.isArray(profileData) && profileData.length > 0) {
-          const profile = profileData[0]
-          // FMP returns lastDividend (annual dividend per share) and beta
-          trailingAnnualDividend = profile.lastDiv || undefined
-          // Calculate dividend yield manually: (annual dividend / price) * 100
-          if (trailingAnnualDividend && price > 0) {
-            dividendYield = (trailingAnnualDividend / price) * 100
-          }
-        }
-      }
-      
-      console.log(`✅ ${ticker} - Price: €${price}, Name: ${name}, Dividend Yield: ${dividendYield ? dividendYield.toFixed(2) + '%' : 'N/A'}`)
-      
-      quotes[ticker] = {
-        price,
-        name,
-        dividendYield,
-        trailingAnnualDividend,
-      }
-    } catch (error: any) {
-      console.error(`❌ Error fetching quote for ${ticker} (${formattedTicker}):`, error.message || error)
-    }
-  }
-
+  // Use the new multi-API stock fetcher which automatically selects the best source
+  const { fetchMultipleStockQuotes } = await import('@/lib/utils/multi-stock-api')
+  const quotes = await fetchMultipleStockQuotes(tickers)
+  
+  // Log which sources were used
+  const sourceCounts = Object.values(quotes).reduce((acc, q) => {
+    acc[q.source] = (acc[q.source] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+  
+  console.log(`📊 Fetched ${Object.keys(quotes).length} quotes from:`, sourceCounts)
+  
   return quotes
 }

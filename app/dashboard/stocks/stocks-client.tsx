@@ -44,6 +44,10 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
         prices[ticker] = quote.price
         if (quote.dividendYield) yields[ticker] = quote.dividendYield
         if (quote.trailingAnnualDividend) dividends[ticker] = quote.trailingAnnualDividend
+        
+        // Log which API was used
+        const sourceEmoji = quote.source === 'fmp' ? '🇪🇺' : quote.source === 'yahoo' ? '🌍' : quote.source === 'alphavantage' ? '🇺🇸' : '💾'
+        console.log(`${sourceEmoji} ${ticker}: €${quote.price} (${quote.source})`)
       })
       
       setCurrentPrices(prices)

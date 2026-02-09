@@ -1,5 +1,5 @@
 /**
- * Database types for the Finance App
+ * Database types for Worthflow
  * These match the Supabase schema
  */
 

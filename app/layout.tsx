@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Finance App",
+  title: "Worthflow",
   description: "Personal finance management with smart categorization",
 };
 

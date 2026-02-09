@@ -10,7 +10,7 @@ export default function LoginPage({
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg px-8 py-10">
           <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">
-            Finance App
+            Worthflow
           </h1>
           <p className="text-center text-gray-600 dark:text-gray-400 mb-8">
             Sign in or create an account

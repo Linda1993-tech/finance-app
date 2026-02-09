@@ -1,4 +1,4 @@
-# Worthflow
+# WorthFlow
 
 Personal finance management with smart categorization.
 

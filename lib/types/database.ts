@@ -1,5 +1,5 @@
 /**
- * Database types for Worthflow
+ * Database types for WorthFlow
  * These match the Supabase schema
  */
 

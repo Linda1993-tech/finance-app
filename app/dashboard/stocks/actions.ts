@@ -239,21 +239,38 @@ async function updateStockPosition(
     .single()
 
   if (transactionType === 'buy') {
+    // Get current exchange rate
+    const { getCurrentExchangeRate } = await import('@/lib/utils/currency-converter')
+    const currentRate = getCurrentExchangeRate('USD') // Default, will be updated based on actual currency
+    
     if (stock) {
       // Update existing position
       const newQuantity = stock.quantity + quantity
       const totalCost = (stock.quantity * stock.average_cost) + (quantity * pricePerShare) + fees
       const newAverageCost = totalCost / newQuantity
+      
+      // Calculate weighted average exchange rate
+      const oldWeight = stock.quantity * stock.average_cost
+      const newWeight = quantity * pricePerShare + fees
+      const totalWeight = oldWeight + newWeight
+      const oldRate = stock.exchange_rate_at_purchase || currentRate
+      const newExchangeRate = ((oldWeight * oldRate) + (newWeight * currentRate)) / totalWeight
 
       await supabase
         .from('stocks')
         .update({
           quantity: newQuantity,
           average_cost: newAverageCost,
+          exchange_rate_at_purchase: newExchangeRate,
           updated_at: new Date().toISOString(),
         })
         .eq('id', stock.id)
     } else {
+      // Get currency from transaction (need to pass it)
+      // For now, determine from ticker or default to EUR
+      const stockCurrency = ticker.endsWith('.AS') || ticker.endsWith('.PA') ? 'EUR' : 'USD'
+      const exchangeRate = getCurrentExchangeRate(stockCurrency)
+      
       // Create new position
       await supabase.from('stocks').insert({
         user_id: user.id,
@@ -261,7 +278,8 @@ async function updateStockPosition(
         name: ticker, // Default to ticker, user can update later
         quantity,
         average_cost: (quantity * pricePerShare + fees) / quantity,
-        currency: 'EUR',
+        currency: stockCurrency,
+        exchange_rate_at_purchase: exchangeRate,
       })
     }
   } else if (transactionType === 'sell' && stock) {

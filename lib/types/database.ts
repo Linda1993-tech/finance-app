@@ -99,6 +99,7 @@ export type Stock = {
   average_cost: number
   current_price: number | null
   currency: string
+  exchange_rate_at_purchase: number | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -117,6 +118,7 @@ export type StockTransaction = {
   total_amount: number
   fees: number
   currency: string
+  exchange_rate_at_purchase: number | null
   notes: string | null
   created_at: string
   updated_at: string

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { Stock } from '@/lib/types/database'
 import { formatEuro, formatNumber } from '@/lib/utils/currency-format'
-import { formatWithCurrency } from '@/lib/utils/currency-converter'
+import { formatWithCurrency, calculateCurrencyGainLoss } from '@/lib/utils/currency-converter'
 import { getDisplayTicker } from '@/lib/utils/ticker-formatter'
 import { deleteStock } from './actions'
 
@@ -68,10 +68,19 @@ export function HoldingsTable({ stocks, currentPrices, dividendYields, annualDiv
               Jaarlijks Div.
             </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              W/V
+              W/V ({stock.currency || 'Stock'})
             </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               W/V %
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-medium text-orange-500 dark:text-orange-300 uppercase tracking-wider" title="Winst/verlies door aandeelprijs">
+              Product W/V
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-medium text-orange-500 dark:text-orange-300 uppercase tracking-wider" title="Winst/verlies door wisselkoers">
+              Valuta W/V
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-medium text-orange-500 dark:text-orange-300 uppercase tracking-wider" title="Totaal in EUR">
+              Totaal (EUR)
             </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               
@@ -85,6 +94,28 @@ export function HoldingsTable({ stocks, currentPrices, dividendYields, annualDiv
             const costBasis = stock.quantity * stock.average_cost
             const gainLoss = marketValue - costBasis
             const gainLossPercentage = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0
+            
+            // Currency gain/loss calculation (like DeGiro)
+            const isNonEUR = stock.currency !== 'EUR'
+            let productGainLoss = 0
+            let currencyGainLoss = 0
+            let totalGainLossInEUR = 0
+            let totalGainLossPercentageInEUR = 0
+            
+            if (isNonEUR && stock.exchange_rate_at_purchase) {
+              const currencyCalc = calculateCurrencyGainLoss(
+                costBasis,
+                marketValue,
+                stock.currency,
+                stock.exchange_rate_at_purchase
+              )
+              productGainLoss = currencyCalc.productGainLoss
+              currencyGainLoss = currencyCalc.currencyGainLoss
+              totalGainLossInEUR = currencyCalc.totalGainLoss
+              
+              const costBasisInEUR = costBasis * stock.exchange_rate_at_purchase
+              totalGainLossPercentageInEUR = costBasisInEUR > 0 ? (totalGainLossInEUR / costBasisInEUR) * 100 : 0
+            }
             
             // Dividend info
             const dividendYield = dividendYields[stock.ticker]
@@ -191,6 +222,36 @@ export function HoldingsTable({ stocks, currentPrices, dividendYields, annualDiv
                 }`}>
                   {gainLossPercentage >= 0 ? '+' : ''}{formatNumber(gainLossPercentage)}%
                 </td>
+
+                {/* Product W/V (EUR) - DeGiro style */}
+                {isNonEUR && stock.exchange_rate_at_purchase ? (
+                  <>
+                    <td className={`px-4 py-3 whitespace-nowrap text-right text-sm ${
+                      productGainLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      {productGainLoss >= 0 ? '+' : ''}{formatEuro(productGainLoss)}
+                    </td>
+                    
+                    {/* Valuta W/V (EUR) */}
+                    <td className={`px-4 py-3 whitespace-nowrap text-right text-sm ${
+                      currencyGainLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      {currencyGainLoss >= 0 ? '+' : ''}{formatEuro(currencyGainLoss)}
+                    </td>
+                    
+                    {/* Totaal W/V (EUR) + % */}
+                    <td className={`px-4 py-3 whitespace-nowrap text-right text-sm font-bold ${
+                      totalGainLossInEUR >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      <div>{totalGainLossInEUR >= 0 ? '+' : ''}{formatEuro(totalGainLossInEUR)}</div>
+                      <div className="text-xs">{totalGainLossPercentageInEUR >= 0 ? '+' : ''}{formatNumber(totalGainLossPercentageInEUR)}%</div>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="px-4 py-3 text-center text-sm text-gray-400" colSpan={3}>-</td>
+                  </>
+                )}
 
                 {/* Actions */}
                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm">

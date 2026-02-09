@@ -30,6 +30,11 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
     setIsRefreshing(true)
     
     try {
+      // Fetch live exchange rates first
+      const { fetchLiveExchangeRates } = await import('@/lib/utils/currency-converter')
+      await fetchLiveExchangeRates()
+      console.log('💱 Exchange rates updated')
+      
       const tickers = initialStocks.map((s) => s.ticker)
       console.log('Fetching quotes for tickers:', tickers)
       const quotes = await fetchStockQuotes(tickers)

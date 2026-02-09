@@ -68,7 +68,7 @@ export function HoldingsTable({ stocks, currentPrices, dividendYields, annualDiv
               Jaarlijks Div.
             </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              W/V ({stock.currency || 'Stock'})
+              W/V
             </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               W/V %

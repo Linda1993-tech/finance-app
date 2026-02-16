@@ -19,6 +19,7 @@ export function normalizeDescription(description: string): string {
  * These are generic payment/transfer descriptions that don't help identify merchants
  */
 const COMMON_PREFIXES = [
+  'RECIBO ', // "Recibo" (receipt) is too generic - skip to next word
   'PAGO EN ',
   'PAGO ',
   'PAYMENT ',
@@ -102,6 +103,13 @@ export function generateLearningKey(normalizedDescription: string): string {
     }
   }
 
+  // Step 2.5: If first word is still "RECIBO" alone, skip to second word
+  // Example: "RECIBO AMAZON" → "AMAZON"
+  const words = workingText.split(/\s+/)
+  if (words[0] === 'RECIBO' && words.length > 1) {
+    workingText = words.slice(1).join(' ')
+  }
+
   // Step 3: Take ONLY the first word (the merchant name)
   // This ensures we don't include leftover transaction codes
   // "GLOVO TZXNK" → "GLOVO"
@@ -110,8 +118,8 @@ export function generateLearningKey(normalizedDescription: string): string {
   
   // If first word is too short (< 3 chars), try taking first 2 words
   if (firstWord.length < 3) {
-    const words = workingText.split(/\s+/)
-    workingText = words.slice(0, 2).join(' ')
+    const finalWords = workingText.split(/\s+/)
+    workingText = finalWords.slice(0, 2).join(' ')
   } else {
     workingText = firstWord
   }

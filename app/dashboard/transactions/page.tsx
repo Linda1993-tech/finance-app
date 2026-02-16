@@ -3,6 +3,7 @@ import { getCategories } from '../categories/actions'
 import { TransactionList } from './transaction-list'
 import { DeleteAllButton } from './delete-button'
 import { AutoCategorizeButton } from './auto-categorize-button'
+import { QuickFixAccountType } from './quick-fix-account-type'
 
 export default async function TransactionsPage() {
   const transactions = await getTransactions()
@@ -46,6 +47,9 @@ export default async function TransactionsPage() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <QuickFixAccountType />
+        </div>
         {transactions.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
             <div className="text-6xl mb-4">📊</div>

@@ -114,23 +114,30 @@ export async function getWealthOverview(): Promise<WealthOverview> {
   let spanishAccountBalance = spanishStartingBalance
 
   if (transactions) {
-    // Dutch account transactions AFTER starting date (including transfers!)
+    // Dutch account transactions AFTER starting date
+    // EXCLUDE transfers (those are already counted in savings/pension/stocks)
     const dutchTransactionsTotal = transactions
       .filter((t) => 
         t.account_type === 'dutch' &&
+        !t.is_transfer && // Exclude transfers to savings/stocks
         (!dutchStartingDate || t.transaction_date > dutchStartingDate)
       )
       .reduce((sum, t) => sum + t.amount, 0)
     dutchAccountBalance = dutchStartingBalance + dutchTransactionsTotal
 
-    // Spanish account transactions AFTER starting date (including transfers!)
+    // Spanish account transactions AFTER starting date
+    // EXCLUDE transfers (those are already counted in savings/pension/stocks)
     const spanishTransactionsTotal = transactions
       .filter((t) => 
         t.account_type === 'spanish' &&
+        !t.is_transfer && // Exclude transfers to savings/stocks
         (!spanishStartingDate || t.transaction_date > spanishStartingDate)
       )
       .reduce((sum, t) => sum + t.amount, 0)
     spanishAccountBalance = spanishStartingBalance + spanishTransactionsTotal
+    
+    console.log(`💳 Dutch account: €${dutchStartingBalance} + €${dutchTransactionsTotal} = €${dutchAccountBalance}`)
+    console.log(`💳 Spanish account: €${spanishStartingBalance} + €${spanishTransactionsTotal} = €${spanishAccountBalance}`)
   }
 
   const currentAccount = dutchAccountBalance + spanishAccountBalance

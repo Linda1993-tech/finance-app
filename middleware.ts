@@ -5,6 +5,15 @@ import { NextResponse, type NextRequest } from 'next/server'
  * Middleware to refresh the user's session and protect authenticated routes
  */
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // Avoid Supabase network I/O on Edge for public entry routes — prevents
+  // MIDDLEWARE_INVOCATION_TIMEOUT when Auth is slow or unreachable.
+  // Session refresh for / and /login happens in Server Components / client instead.
+  if (pathname === '/' || pathname === '/login') {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -39,20 +48,9 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Redirect to login if user is not authenticated and trying to access protected routes
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    request.nextUrl.pathname !== '/'
-  ) {
+  if (!user && !pathname.startsWith('/login') && pathname !== '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  // Redirect to dashboard if user is authenticated and trying to access login
-  if (user && request.nextUrl.pathname === '/login') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 

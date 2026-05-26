@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Budget } from '@/lib/types/database'
-import { calculateNetSpent } from '@/lib/utils/budget-utils'
+import { calculateNetSpent, buildSpendingByCategory, countsTowardBudget } from '@/lib/utils/budget-utils'
 
 export type BudgetWithCategory = Budget & {
   category: {
@@ -100,10 +100,10 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
 
   const { data: transactions, error } = await supabase
     .from('transactions')
-    .select('amount, category_id, categories(id, parent_id)')
+    .select('amount, category_id, is_transfer, is_income, categories(id, parent_id)')
     .eq('user_id', user.id)
     .eq('is_transfer', false)
-    .eq('is_income', false)
+    .or('is_income.eq.false,and(is_income.eq.true,amount.gt.0,category_id.not.is.null)')
     .gte('transaction_date', startDate)
     .lte('transaction_date', endDate)
 
@@ -115,6 +115,8 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
   type TransactionWithCategory = {
     amount: number
     category_id: string | null
+    is_transfer: boolean
+    is_income: boolean
     categories: {
       id: string
       parent_id: string | null
@@ -122,32 +124,8 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
   }
 
   const typedTransactions = (transactions || []) as unknown as TransactionWithCategory[]
-
-  // Calculate spending per category (including parent categories)
-  const spendingByCategory = new Map<string, number>()
-  let totalSpending = 0
-
-  for (const t of typedTransactions) {
-    const netAmount = t.amount // Can be negative (expense) or positive (reimbursement)
-    
-    // Add to specific category
-    if (t.category_id) {
-      const current = spendingByCategory.get(t.category_id) || 0
-      spendingByCategory.set(t.category_id, current + netAmount)
-      
-      // Also add to parent category if this is a subcategory
-      const category = t.categories
-      if (category?.parent_id) {
-        const parentCurrent = spendingByCategory.get(category.parent_id) || 0
-        spendingByCategory.set(category.parent_id, parentCurrent + netAmount)
-      }
-    } else {
-      const current = spendingByCategory.get('uncategorized') || 0
-      spendingByCategory.set('uncategorized', current + netAmount)
-    }
-    
-    totalSpending += netAmount
-  }
+  const budgetTransactions = typedTransactions.filter(countsTowardBudget)
+  const spendingByCategory = buildSpendingByCategory(budgetTransactions)
 
   // Build budget status for each budget
   let statuses: BudgetStatus[]
@@ -313,10 +291,10 @@ export async function getAllCategoriesBudgetStatus(month: number, year: number):
 
   const { data: transactions, error: txError } = await supabase
     .from('transactions')
-    .select('amount, category_id, categories(id, parent_id)')
+    .select('amount, category_id, is_transfer, is_income, categories(id, parent_id)')
     .eq('user_id', user.id)
     .eq('is_transfer', false)
-    .eq('is_income', false)
+    .or('is_income.eq.false,and(is_income.eq.true,amount.gt.0,category_id.not.is.null)')
     .gte('transaction_date', startDate)
     .lte('transaction_date', endDate)
 
@@ -328,6 +306,8 @@ export async function getAllCategoriesBudgetStatus(month: number, year: number):
   type TransactionWithCategory = {
     amount: number
     category_id: string | null
+    is_transfer: boolean
+    is_income: boolean
     categories: {
       id: string
       parent_id: string | null
@@ -335,29 +315,8 @@ export async function getAllCategoriesBudgetStatus(month: number, year: number):
   }
 
   const typedTransactions = (transactions || []) as unknown as TransactionWithCategory[]
-
-  // Calculate spending per category (including parent categories)
-  const spendingByCategory = new Map<string, number>()
-
-  for (const t of typedTransactions) {
-    const netAmount = t.amount // Can be negative (expense) or positive (reimbursement)
-    
-    // Add to specific category
-    if (t.category_id) {
-      const current = spendingByCategory.get(t.category_id) || 0
-      spendingByCategory.set(t.category_id, current + netAmount)
-      
-      // Also add to parent category if this is a subcategory
-      const category = t.categories
-      if (category?.parent_id) {
-        const parentCurrent = spendingByCategory.get(category.parent_id) || 0
-        spendingByCategory.set(category.parent_id, parentCurrent + netAmount)
-      }
-    } else {
-      const current = spendingByCategory.get('uncategorized') || 0
-      spendingByCategory.set('uncategorized', current + netAmount)
-    }
-  }
+  const budgetTransactions = typedTransactions.filter(countsTowardBudget)
+  const spendingByCategory = buildSpendingByCategory(budgetTransactions)
 
   // Build budget status for each unique category
   const statuses: BudgetStatus[] = []

@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { calculateNetSpent } from '@/lib/utils/budget-utils'
+import { calculateNetSpent, buildMonthlySpendingByCategory, countsTowardBudget } from '@/lib/utils/budget-utils'
 
 export type MonthlyBudgetData = {
   category: {
@@ -48,10 +48,10 @@ export async function getYearlyBudgetOverview(year: number): Promise<MonthlyBudg
 
   const { data: transactions, error: txError } = await supabase
     .from('transactions')
-    .select('amount, category_id, transaction_date, categories(id, parent_id)')
+    .select('amount, category_id, transaction_date, is_transfer, is_income, categories(id, parent_id)')
     .eq('user_id', user.id)
     .eq('is_transfer', false)
-    .eq('is_income', false)
+    .or('is_income.eq.false,and(is_income.eq.true,amount.gt.0,category_id.not.is.null)')
     .gte('transaction_date', startDate)
     .lte('transaction_date', endDate)
 
@@ -61,12 +61,12 @@ export async function getYearlyBudgetOverview(year: number): Promise<MonthlyBudg
   }
 
   // Build spending by category by month (roll up subcategories to parent budgets)
-  const spendingMap = new Map<string, { [month: number]: number }>()
-
   type TransactionWithCategory = {
     amount: number
     category_id: string | null
     transaction_date: string
+    is_transfer: boolean
+    is_income: boolean
     categories: {
       id: string
       parent_id: string | null
@@ -74,28 +74,8 @@ export async function getYearlyBudgetOverview(year: number): Promise<MonthlyBudg
   }
 
   const typedTransactions = (transactions || []) as unknown as TransactionWithCategory[]
-
-  for (const tx of typedTransactions) {
-    const txDate = new Date(tx.transaction_date)
-    const month = txDate.getMonth() + 1 // 1-12
-    const categoryId = tx.category_id || 'uncategorized'
-    const amount = tx.amount
-
-    const addToCategory = (id: string) => {
-      if (!spendingMap.has(id)) {
-        spendingMap.set(id, {})
-      }
-      const categorySpending = spendingMap.get(id)!
-      categorySpending[month] = (categorySpending[month] || 0) + amount
-    }
-
-    addToCategory(categoryId)
-
-    const parentId = tx.categories?.parent_id
-    if (parentId) {
-      addToCategory(parentId)
-    }
-  }
+  const budgetTransactions = typedTransactions.filter(countsTowardBudget)
+  const spendingMap = buildMonthlySpendingByCategory(budgetTransactions)
 
   // Build budget data by category
   const categoryMap = new Map<string, MonthlyBudgetData>()

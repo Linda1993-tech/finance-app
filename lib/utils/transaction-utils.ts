@@ -129,6 +129,31 @@ export function generateLearningKey(normalizedDescription: string): string {
 }
 
 /**
+ * Merchants where each transaction may need a different category (default: don't remember)
+ */
+const VARIABLE_MERCHANTS = ['BIZUM', 'AMAZON', 'BOLCOM', 'BOL COM', 'PAYPAL', 'REVOLUT']
+
+export function isVariableMerchant(
+  normalizedDescription: string,
+  learningKey?: string | null
+): boolean {
+  const text = `${normalizedDescription} ${learningKey || ''}`.toUpperCase()
+  return VARIABLE_MERCHANTS.some((merchant) => {
+    const compact = merchant.replace(/\s/g, '')
+    return text.includes(merchant) || text.includes(compact)
+  })
+}
+
+export type DefaultCategorizeOption = 'rule' | 'once'
+
+export function getDefaultCategorizeOption(
+  normalizedDescription: string,
+  learningKey?: string | null
+): DefaultCategorizeOption {
+  return isVariableMerchant(normalizedDescription, learningKey) ? 'once' : 'rule'
+}
+
+/**
  * Normalize a user-edited learning key for storage and rule matching
  */
 export function normalizeLearningKey(key: string): string {

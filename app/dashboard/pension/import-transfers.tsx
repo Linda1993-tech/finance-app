@@ -5,6 +5,7 @@ import type { Transaction } from '@/lib/types/database'
 import type { SavingsAccount } from '@/lib/types/database'
 import { getUnlinkedTransfers, importTransfersToSavings } from './actions'
 import { formatEuro } from '@/lib/utils/currency-format'
+import { getSavingsEntryTypeFromTransactionAmount } from '@/lib/utils/transaction-utils'
 
 type Props = {
   accounts: SavingsAccount[]
@@ -15,7 +16,6 @@ type Props = {
 type TransferSelection = {
   transaction: Transaction
   accountId: string
-  entryType: 'deposit' | 'withdrawal'
   selected: boolean
 }
 
@@ -38,7 +38,6 @@ export function ImportTransfers({ accounts, onSuccess, onClose }: Props) {
           initial[t.id] = {
             transaction: t,
             accountId: accounts[0]?.id || '',
-            entryType: t.amount > 0 ? 'deposit' : 'withdrawal',
             selected: false,
           }
         })
@@ -88,7 +87,7 @@ export function ImportTransfers({ accounts, onSuccess, onClose }: Props) {
     const imports = selected.map((s) => ({
       transaction_id: s.transaction.id,
       account_id: s.accountId,
-      entry_type: s.entryType,
+      entry_type: getSavingsEntryTypeFromTransactionAmount(s.transaction.amount),
       transaction_date: s.transaction.transaction_date,
       amount: s.transaction.amount,
       description: s.transaction.description,
@@ -223,21 +222,19 @@ export function ImportTransfers({ accounts, onSuccess, onClose }: Props) {
                         </select>
                       </div>
 
-                      {/* Type Selection */}
+                      {/* Type (automatic) */}
                       <div>
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Entry Type
+                          Type
                         </label>
-                        <select
-                          value={selection.entryType}
-                          onChange={(e) =>
-                            updateSelection(transfer.id, { entryType: e.target.value as 'deposit' | 'withdrawal' })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        >
-                          <option value="deposit">💵 Deposit (Money In)</option>
-                          <option value="withdrawal">💸 Withdrawal (Money Out)</option>
-                        </select>
+                        <div className="px-2 py-1 text-sm rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-white">
+                          {getSavingsEntryTypeFromTransactionAmount(transfer.amount) === 'deposit'
+                            ? '💵 Bijschrijving'
+                            : '💸 Afboeking'}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Automatisch op basis van bedrag
+                        </p>
                       </div>
                     </div>
                   )}

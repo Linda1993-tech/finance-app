@@ -154,6 +154,16 @@ export function getDefaultCategorizeOption(
 }
 
 /**
+ * From checking account perspective: negative = money to savings/pension (deposit),
+ * positive = money back from savings/pension (withdrawal).
+ */
+export function getSavingsEntryTypeFromTransactionAmount(
+  amount: number
+): 'deposit' | 'withdrawal' {
+  return amount < 0 ? 'deposit' : 'withdrawal'
+}
+
+/**
  * Normalize a user-edited learning key for storage and rule matching
  */
 export function normalizeLearningKey(key: string): string {

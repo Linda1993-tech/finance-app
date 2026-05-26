@@ -7,6 +7,7 @@ import { getSavingsAccounts } from '../savings/actions'
 import { formatEuro } from '@/lib/utils/currency-format'
 import {
   getDefaultCategorizeOption,
+  getSavingsEntryTypeFromTransactionAmount,
   isVariableMerchant,
 } from '@/lib/utils/transaction-utils'
 
@@ -44,9 +45,7 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [savingsAccounts, setSavingsAccounts] = useState<SavingsAccount[]>([])
   const [selectedSavingsAccount, setSelectedSavingsAccount] = useState<string>('')
-  const [savingsEntryType, setSavingsEntryType] = useState<'deposit' | 'withdrawal'>(
-    transaction.amount > 0 ? 'deposit' : 'withdrawal'
-  )
+  const savingsEntryType = getSavingsEntryTypeFromTransactionAmount(transaction.amount)
   const [learningKey, setLearningKey] = useState(transaction.learning_key || '')
 
   useEffect(() => {
@@ -207,29 +206,11 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
                   ))}
                 </select>
                 {selectedSavingsAccount && (
-                  <div className="flex gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="entry-type"
-                        value="deposit"
-                        checked={savingsEntryType === 'deposit'}
-                        onChange={() => setSavingsEntryType('deposit')}
-                        className="text-green-600"
-                      />
-                      <span className="text-sm text-gray-900 dark:text-white">➕ Storting</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="entry-type"
-                        value="withdrawal"
-                        checked={savingsEntryType === 'withdrawal'}
-                        onChange={() => setSavingsEntryType('withdrawal')}
-                        className="text-red-600"
-                      />
-                      <span className="text-sm text-gray-900 dark:text-white">➖ Opname</span>
-                    </label>
+                  <div className="text-sm text-gray-700 dark:text-gray-300">
+                    {savingsEntryType === 'deposit' ? '➕ Bijschrijving' : '➖ Afboeking'}
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                      (automatisch op basis van bedrag)
+                    </span>
                   </div>
                 )}
               </div>

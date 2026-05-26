@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { normalizeLearningKey } from '@/lib/utils/transaction-utils'
 
 export type CategorizeOption = 
   | 'once' // Apply once, don't create rule
@@ -20,7 +21,8 @@ export async function categorizeTransaction(
   isIncome: boolean = false,
   savingsAccountId?: string,
   savingsEntryType?: 'deposit' | 'withdrawal',
-  transactionDate?: string
+  transactionDate?: string,
+  customLearningKey?: string
 ) {
   const supabase = await createClient()
 
@@ -47,6 +49,13 @@ export async function categorizeTransaction(
     throw new Error('Unauthorized')
   }
 
+  const learningKeyToUse =
+    option === 'exclude'
+      ? null
+      : customLearningKey?.trim()
+        ? normalizeLearningKey(customLearningKey)
+        : transaction.learning_key
+
   // Update transaction based on option
   const updates: any = {
     category_id: categoryId || null, // Ensure null, not empty string
@@ -58,6 +67,8 @@ export async function categorizeTransaction(
   if (option === 'exclude') {
     updates.exclude_from_learning = true
     updates.learning_key = null // Clear learning key
+  } else if (learningKeyToUse) {
+    updates.learning_key = learningKeyToUse
   }
 
   if (option === 'no-auto') {
@@ -74,10 +85,10 @@ export async function categorizeTransaction(
   }
 
   // Create or update rule if option is 'rule'
-  if (option === 'rule' && transaction.learning_key && categoryId) {
+  if (option === 'rule' && learningKeyToUse && categoryId) {
     await upsertCategorizationRule(
       user.id,
-      transaction.learning_key,
+      learningKeyToUse,
       categoryId,
       transactionId
     )
@@ -103,6 +114,7 @@ export async function categorizeTransaction(
 
   revalidatePath('/dashboard/transactions')
   revalidatePath('/dashboard/savings')
+  revalidatePath('/dashboard/rules')
 }
 
 /**

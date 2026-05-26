@@ -32,6 +32,7 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
   const [savingsEntryType, setSavingsEntryType] = useState<'deposit' | 'withdrawal'>(
     transaction.amount > 0 ? 'deposit' : 'withdrawal'
   )
+  const [learningKey, setLearningKey] = useState(transaction.learning_key || '')
 
   // Load savings accounts when modal opens
   useEffect(() => {
@@ -55,6 +56,7 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
     e.preventDefault()
     // Category is optional for transfers and income, required otherwise
     if (!selectedCategory && !isTransfer && !isIncome) return
+    if (option === 'rule' && !learningKey.trim()) return
 
     setIsSubmitting(true)
     try {
@@ -67,7 +69,8 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
         // Pass savings account info if selected
         selectedSavingsAccount || undefined,
         savingsEntryType,
-        transaction.transaction_date
+        transaction.transaction_date,
+        learningKey.trim() || undefined
       )
       onClose()
       window.location.reload()
@@ -93,13 +96,27 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               <strong>Normalized:</strong> {transaction.normalized_description}
             </p>
-            {transaction.learning_key && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                <strong>Learning Key:</strong>{' '}
-                <code className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
-                  {transaction.learning_key}
-                </code>
-              </p>
+            {option !== 'exclude' && (
+              <div>
+                <label
+                  htmlFor="learning-key"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  Learning Key (rule)
+                </label>
+                <input
+                  id="learning-key"
+                  type="text"
+                  value={learningKey}
+                  onChange={(e) => setLearningKey(e.target.value)}
+                  placeholder="Bijv. MENSSANA"
+                  maxLength={16}
+                  className="w-full px-3 py-2 font-mono text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Pas aan voor een specifiekere match — bijv. MENSSANA i.p.v. CAFE
+                </p>
+              </div>
             )}
             <p
               className={`text-sm font-medium ${
@@ -257,8 +274,8 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
                     ✅ Always create/update rule (Recommended)
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Create a rule for "{transaction.learning_key}" → auto-categorize similar
-                    transactions in the future
+                    Create a rule for &quot;{learningKey.trim() || '…'}&quot; → auto-categorize
+                    similar transactions in the future
                   </div>
                 </div>
               </label>
@@ -326,7 +343,11 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              disabled={isSubmitting || (!selectedCategory && !isTransfer && !isIncome)}
+              disabled={
+                isSubmitting ||
+                (!selectedCategory && !isTransfer && !isIncome) ||
+                (option === 'rule' && !learningKey.trim())
+              }
               className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
               {isSubmitting ? 'Saving...' : 'Save & Categorize'}

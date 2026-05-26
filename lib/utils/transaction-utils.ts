@@ -129,6 +129,18 @@ export function generateLearningKey(normalizedDescription: string): string {
 }
 
 /**
+ * Normalize a user-edited learning key for storage and rule matching
+ */
+export function normalizeLearningKey(key: string): string {
+  return key
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 16)
+}
+
+/**
  * Parse amount string to number
  * Handles various formats: "1.234,56" or "1,234.56"
  */

@@ -1,6 +1,10 @@
 import { ImportForm } from './import-form'
+import { getAccountTypeFixData } from '../transactions/actions'
+import { FixAccountTypePanel } from '../transactions/fix-account-type-panel'
 
-export default function ImportPage() {
+export default async function ImportPage() {
+  const fixData = await getAccountTypeFixData()
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -12,7 +16,7 @@ export default function ImportPage() {
                 Import Transactions
               </h1>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Upload CSV or XLS/XLSX files from your Dutch or Spanish bank account
+                Upload CSV of XLS/XLSX bestanden — de app herkent automatisch welke rekening het is
               </p>
             </div>
             <a
@@ -33,8 +37,8 @@ export default function ImportPage() {
               Upload Bank File
             </h2>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Select your bank and upload the file. We'll automatically parse and import
-              your transactions.
+              Upload je bankafschrift. We herkennen automatisch of het je Nederlandse of Spaanse
+              rekening betreft en importeren de transacties.
             </p>
           </div>
 
@@ -66,10 +70,15 @@ export default function ImportPage() {
               </div>
             </div>
             <p className="mt-4 text-xs text-gray-500 dark:text-gray-500">
-              💡 Tip: Select your account country, then upload either CSV or XLSX format. The system
-              will automatically detect and parse your file.
+              💡 Tip: je hoeft niet meer handmatig te kiezen tussen NL en ES. De app herkent het
+              accounttype aan de hand van de kolomnamen in het bestand (bijv. Datum/Bedrag voor NL,
+              F. VALOR/IMPORTE voor ES).
             </p>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <FixAccountTypePanel data={fixData} />
         </div>
 
         {/* View Transactions Link */}

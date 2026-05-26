@@ -2,114 +2,120 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { parseINGNLCSV } from '@/lib/parsers/csv-parser'
-import { parseINGESXLSX } from '@/lib/parsers/xlsx-parser'
+import { parseINGNLCSV, parseINGESCSV } from '@/lib/parsers/csv-parser'
+import { parseINGESXLSX, parseINGNLXLSX } from '@/lib/parsers/xlsx-parser'
+import { detectBankFormat } from '@/lib/parsers/detect-format'
 import { normalizeDescription, generateLearningKey } from '@/lib/utils/transaction-utils'
-import type { ParsedTransaction } from '@/lib/parsers/csv-parser'
+import type { ParsedTransaction, ParseResult } from '@/lib/parsers/csv-parser'
 
 export type ImportResult = {
   success: boolean
   count?: number
   duplicates?: number
   error?: string
+  accountType?: 'dutch' | 'spanish'
+}
+
+function parseBankStatement(
+  buffer: ArrayBuffer,
+  fileFormat: 'csv' | 'xlsx',
+  accountType: 'dutch' | 'spanish'
+): ParseResult {
+  if (fileFormat === 'xlsx') {
+    return accountType === 'spanish'
+      ? parseINGESXLSX(buffer)
+      : parseINGNLXLSX(buffer)
+  }
+
+  const content = new TextDecoder('utf-8').decode(buffer)
+  return accountType === 'spanish'
+    ? parseINGESCSV(content)
+    : parseINGNLCSV(content)
 }
 
 /**
- * Import transactions from CSV (supports both Dutch and Spanish bank formats)
+ * Import bank statement with automatic account detection
+ */
+export async function importBankStatement(formData: FormData): Promise<ImportResult> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const file = formData.get('file') as File
+
+  if (!file) {
+    return { success: false, error: 'No file provided' }
+  }
+
+  const buffer = await file.arrayBuffer()
+  const detection = detectBankFormat(file.name, buffer)
+
+  let parseResult = parseBankStatement(buffer, detection.fileFormat, detection.accountType)
+
+  // If primary parse fails, try the other account type as fallback
+  if (!parseResult.success || !parseResult.transactions?.length) {
+    const alternateType = detection.accountType === 'dutch' ? 'spanish' : 'dutch'
+    const alternateResult = parseBankStatement(buffer, detection.fileFormat, alternateType)
+
+    if (alternateResult.success && alternateResult.transactions?.length) {
+      parseResult = alternateResult
+      detection.accountType = alternateType
+      detection.importSource = alternateType === 'spanish' ? 'ES' : 'NL'
+    }
+  }
+
+  if (!parseResult.success || !parseResult.transactions) {
+    return {
+      success: false,
+      error: parseResult.error ?? 'Could not parse bank statement. Check that the file is a valid ING export.',
+    }
+  }
+
+  if (parseResult.transactions.length === 0) {
+    return {
+      success: false,
+      error: 'No transactions found in file. Check that the file contains valid transaction data.',
+    }
+  }
+
+  const transactionsWithAccountType = parseResult.transactions.map((t) => ({
+    ...t,
+    account_type: detection.accountType,
+  }))
+
+  const saveResult = await saveTransactions(
+    user.id,
+    transactionsWithAccountType,
+    detection.importSource
+  )
+
+  revalidatePath('/dashboard/transactions')
+  revalidatePath('/dashboard')
+
+  return {
+    ...saveResult,
+    accountType: detection.accountType,
+  }
+}
+
+/**
+ * @deprecated Use importBankStatement instead
  */
 export async function importCSV(formData: FormData): Promise<ImportResult> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { success: false, error: 'Not authenticated' }
-  }
-
-  const file = formData.get('file') as File
-  const bank = formData.get('bank') as string || 'NL'
-  
-  if (!file) {
-    return { success: false, error: 'No file provided' }
-  }
-
-  // Read file content
-  const content = await file.text()
-
-  // Parse CSV (supports Dutch and Spanish bank formats)
-  const parseResult = parseINGNLCSV(content)
-
-  if (!parseResult.success || !parseResult.transactions) {
-    return { success: false, error: parseResult.error }
-  }
-
-  // Override account_type based on bank selection
-  const accountType = bank === 'ES' ? 'spanish' : 'dutch'
-  const transactionsWithCorrectAccountType = parseResult.transactions.map(t => ({
-    ...t,
-    account_type: accountType as 'dutch' | 'spanish' | 'other'
-  }))
-
-  // Save to database
-  const saveResult = await saveTransactions(
-    user.id,
-    transactionsWithCorrectAccountType,
-    bank as 'NL' | 'ES'
-  )
-
-  revalidatePath('/dashboard/transactions')
-  return saveResult
+  return importBankStatement(formData)
 }
 
 /**
- * Import transactions from XLSX/XLS (supports both Dutch and Spanish bank formats)
+ * @deprecated Use importBankStatement instead
  */
 export async function importXLSX(formData: FormData): Promise<ImportResult> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { success: false, error: 'Not authenticated' }
-  }
-
-  const file = formData.get('file') as File
-  const bank = formData.get('bank') as string || 'ES'
-  
-  if (!file) {
-    return { success: false, error: 'No file provided' }
-  }
-
-  // Read file as ArrayBuffer
-  const arrayBuffer = await file.arrayBuffer()
-
-  // Parse XLSX (supports Dutch and Spanish bank formats)
-  const parseResult = parseINGESXLSX(arrayBuffer)
-
-  if (!parseResult.success || !parseResult.transactions) {
-    return { success: false, error: parseResult.error }
-  }
-
-  // Override account_type based on bank selection
-  const accountType = bank === 'ES' ? 'spanish' : 'dutch'
-  const transactionsWithCorrectAccountType = parseResult.transactions.map(t => ({
-    ...t,
-    account_type: accountType as 'dutch' | 'spanish' | 'other'
-  }))
-
-  // Save to database
-  const saveResult = await saveTransactions(
-    user.id,
-    transactionsWithCorrectAccountType,
-    bank as 'NL' | 'ES'
-  )
-
-  revalidatePath('/dashboard/transactions')
-  return saveResult
+  return importBankStatement(formData)
 }
 
 /**

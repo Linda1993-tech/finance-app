@@ -1,12 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { importCSV, importXLSX } from './actions'
-
-type BankType = 'NL' | 'ES'
+import { importBankStatement } from './actions'
 
 export function ImportForm() {
-  const [bank, setBank] = useState<BankType>('NL')
   const [file, setFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [result, setResult] = useState<{
@@ -25,42 +22,39 @@ export function ImportForm() {
 
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('bank', bank)
 
     try {
-      // Detect file type by extension
-      const fileName = file.name.toLowerCase()
-      const isXLSX = fileName.endsWith('.xlsx') || fileName.endsWith('.xls')
-      
-      const importResult = isXLSX 
-        ? await importXLSX(formData)
-        : await importCSV(formData)
+      const importResult = await importBankStatement(formData)
 
       if (importResult.success) {
-        let message = `✅ Successfully imported ${importResult.count} new transaction${importResult.count === 1 ? '' : 's'}!`
-        
+        const accountLabel =
+          importResult.accountType === 'spanish'
+            ? '🇪🇸 Spaanse rekening'
+            : '🇳🇱 Nederlandse rekening'
+
+        let message = `✅ ${importResult.count} nieuwe transactie${importResult.count === 1 ? '' : 's'} geïmporteerd (${accountLabel})`
+
         if (importResult.duplicates && importResult.duplicates > 0) {
-          message += ` (${importResult.duplicates} duplicate${importResult.duplicates === 1 ? '' : 's'} skipped)`
+          message += ` — ${importResult.duplicates} duplicaat${importResult.duplicates === 1 ? '' : 'en'} overgeslagen`
         }
-        
+
         setResult({
           type: 'success',
           message,
         })
         setFile(null)
-        // Reset file input
         const input = document.getElementById('file-input') as HTMLInputElement
         if (input) input.value = ''
       } else {
         setResult({
           type: 'error',
-          message: `❌ Error: ${importResult.error}`,
+          message: `❌ Fout: ${importResult.error}`,
         })
       }
     } catch (error) {
       setResult({
         type: 'error',
-        message: `❌ Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message: `❌ Onverwachte fout: ${error instanceof Error ? error.message : 'Onbekende fout'}`,
       })
     } finally {
       setIsUploading(false)
@@ -69,48 +63,17 @@ export function ImportForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Bank Selection */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          Select Account Country
-        </label>
-        <div className="grid grid-cols-2 gap-4">
-          <button
-            type="button"
-            onClick={() => setBank('NL')}
-            className={`p-4 border-2 rounded-lg text-left transition-all ${
-              bank === 'NL'
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-            }`}
-          >
-            <div className="font-semibold text-gray-900 dark:text-white">🇳🇱 Dutch Bank Account</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">CSV or XLSX format</div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setBank('ES')}
-            className={`p-4 border-2 rounded-lg text-left transition-all ${
-              bank === 'ES'
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-            }`}
-          >
-            <div className="font-semibold text-gray-900 dark:text-white">🇪🇸 Spanish Bank Account</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">CSV or XLSX format</div>
-          </button>
-        </div>
-      </div>
-
-      {/* File Upload */}
       <div>
         <label
           htmlFor="file-input"
           className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
         >
-          Upload File
+          Bankafschrift uploaden
         </label>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Upload een CSV of XLS/XLSX bestand. De app herkent automatisch of het je Nederlandse of
+          Spaanse rekening betreft.
+        </p>
         <div className="flex items-center gap-4">
           <input
             id="file-input"
@@ -122,12 +85,11 @@ export function ImportForm() {
         </div>
         {file && (
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+            Geselecteerd: {file.name} ({(file.size / 1024).toFixed(1)} KB)
           </p>
         )}
       </div>
 
-      {/* Result Message */}
       {result && (
         <div
           className={`p-4 rounded-lg ${
@@ -148,15 +110,13 @@ export function ImportForm() {
         </div>
       )}
 
-      {/* Submit Button */}
       <button
         type="submit"
         disabled={!file || isUploading}
         className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
       >
-        {isUploading ? 'Importing...' : 'Import Transactions'}
+        {isUploading ? 'Importeren...' : 'Transacties importeren'}
       </button>
     </form>
   )
 }
-

@@ -114,6 +114,86 @@ export function parseINGNLCSV(fileContent: string): ParseResult {
 }
 
 /**
+ * Parse Spanish bank CSV file
+ * Expected columns: F. VALOR / Fecha, DESCRIPCION, IMPORTE
+ */
+export function parseINGESCSV(fileContent: string): ParseResult {
+  try {
+    let parsed: Papa.ParseResult<Record<string, string>> | null = null
+
+    for (const delimiter of [';', ',']) {
+      const result = Papa.parse<Record<string, string>>(fileContent, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter,
+        transformHeader: (header) => header.trim().replace(/"/g, ''),
+      })
+      if ((result.meta.fields || []).length > 0) {
+        parsed = result
+        break
+      }
+    }
+
+    if (!parsed || parsed.errors.length > 0) {
+      return {
+        success: false,
+        error: parsed?.errors[0]?.message ?? 'Could not parse CSV file',
+      }
+    }
+
+    const headers = parsed.meta.fields || []
+    const dateCol = findColumn(headers, ['f. valor', 'valor', 'fecha'])
+    const descCol = findColumn(headers, ['descripcion', 'concepto'])
+    const amountCol = findColumn(headers, ['importe'])
+
+    if (!dateCol || !descCol || !amountCol) {
+      return {
+        success: false,
+        error: `Could not find required columns. Found: ${headers.join(', ')}. Expected: F. VALOR, DESCRIPCION, IMPORTE`,
+      }
+    }
+
+    const transactions: ParsedTransaction[] = []
+
+    for (const row of parsed.data) {
+      try {
+        const dateStr = row[dateCol]?.trim()
+        if (!dateStr) continue
+
+        const date = parseDate(dateStr)
+        const description = row[descCol]?.trim() || 'Unknown'
+        const amountStr = row[amountCol]?.trim()
+        if (!amountStr || amountStr === '0' || amountStr === '0,00') continue
+
+        const amount = parseAmount(amountStr)
+        if (!description || amount === 0) continue
+
+        transactions.push({
+          date,
+          description,
+          amount,
+          currency: 'EUR',
+          account_type: 'spanish',
+        })
+      } catch (err) {
+        console.warn('Skipping invalid row:', row, err)
+      }
+    }
+
+    return {
+      success: true,
+      transactions,
+      rowCount: transactions.length,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
  * Find column name that matches any of the given names (case insensitive)
  */
 function findColumn(headers: string[], possibleNames: string[]): string | null {

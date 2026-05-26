@@ -36,17 +36,14 @@ export function parseINGESXLSX(fileBuffer: ArrayBuffer): ParseResult {
       return { success: false, error: 'No data found in Excel file' }
     }
 
-    // Spanish bank files typically have headers on row 4 (index 3)
-    // Rows 1-3 contain account information
-    const headerRowIndex = 3
-    
-    if (arrayData.length <= headerRowIndex) {
+    const headerRowIndex = findHeaderRowIndex(arrayData)
+    if (headerRowIndex === -1) {
       return {
         success: false,
-        error: 'File has fewer than 4 rows. Cannot find header row.',
+        error: 'Could not find header row with F. VALOR, DESCRIPCION, IMPORTE columns.',
       }
     }
-    
+
     const headers = (arrayData[headerRowIndex] as string[]).map((h) => String(h || '').trim())
 
     // Now parse the data starting from the row after headers
@@ -108,6 +105,140 @@ export function parseINGESXLSX(fileBuffer: ArrayBuffer): ParseResult {
       error: error instanceof Error ? error.message : 'Unknown error',
     }
   }
+}
+
+/**
+ * Parse Dutch bank XLSX/XLS file
+ * Expected columns: Datum, Naam/Omschrijving, Bedrag (EUR), Af Bij
+ */
+export function parseINGNLXLSX(fileBuffer: ArrayBuffer): ParseResult {
+  try {
+    const workbook = XLSX.read(fileBuffer, { type: 'array' })
+    const firstSheetName = workbook.SheetNames[0]
+    if (!firstSheetName) {
+      return { success: false, error: 'No sheets found in Excel file' }
+    }
+
+    const arrayData = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets[firstSheetName], {
+      header: 1,
+      raw: false,
+      defval: '',
+    })
+
+    if (arrayData.length === 0) {
+      return { success: false, error: 'No data found in Excel file' }
+    }
+
+    const headerRowIndex = findDutchHeaderRowIndex(arrayData)
+    if (headerRowIndex === -1) {
+      return {
+        success: false,
+        error: 'Could not find header row with Datum, Bedrag, Af Bij columns.',
+      }
+    }
+
+    const headers = (arrayData[headerRowIndex] as string[]).map((h) => String(h || '').trim())
+    const dataRows = arrayData.slice(headerRowIndex + 1)
+    const transactions: ParsedTransaction[] = []
+
+    const dateColIndex = findColumnIndex(headers, ['datum'])
+    const descColIndex = findColumnIndex(headers, ['naam', 'omschrijving'])
+    const amountColIndex = findColumnIndex(headers, ['bedrag'])
+    const debitCreditColIndex = findColumnIndex(headers, ['af bij'])
+
+    if (
+      dateColIndex === -1 ||
+      descColIndex === -1 ||
+      amountColIndex === -1 ||
+      debitCreditColIndex === -1
+    ) {
+      return {
+        success: false,
+        error: `Could not find required columns. Found: ${headers.join(', ')}. Expected: Datum, Naam/Omschrijving, Bedrag (EUR), Af Bij`,
+      }
+    }
+
+    for (const row of dataRows) {
+      try {
+        const rowArray = row as string[]
+        const dateStr = String(rowArray[dateColIndex] || '').trim()
+        if (!dateStr || dateStr.length !== 8) continue
+
+        const year = dateStr.substring(0, 4)
+        const month = dateStr.substring(4, 6)
+        const day = dateStr.substring(6, 8)
+        const date = `${year}-${month}-${day}`
+
+        const description = String(rowArray[descColIndex] || '').trim() || 'Unknown'
+        let amount = parseAmount(String(rowArray[amountColIndex] || '0'))
+
+        const debitCredit = String(rowArray[debitCreditColIndex] || '').trim().toLowerCase()
+        if (debitCredit === 'af') {
+          amount = -Math.abs(amount)
+        } else if (debitCredit === 'bij') {
+          amount = Math.abs(amount)
+        }
+
+        if (!description || amount === 0) continue
+
+        transactions.push({
+          date,
+          description,
+          amount,
+          currency: 'EUR',
+          account_type: 'dutch',
+        })
+      } catch (err) {
+        console.warn('Skipping invalid row:', row, err)
+      }
+    }
+
+    return {
+      success: true,
+      transactions,
+      rowCount: transactions.length,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+function findHeaderRowIndex(arrayData: unknown[]): number {
+  for (let i = 0; i < Math.min(arrayData.length, 12); i++) {
+    const row = arrayData[i] as string[]
+    if (!Array.isArray(row)) continue
+
+    const headers = row.map((h) => String(h || '').trim())
+    const dateCol = findColumnIndex(headers, ['f. valor', 'valor', 'fecha'])
+    const descCol = findColumnIndex(headers, ['descripcion', 'concepto'])
+    const amountCol = findColumnIndex(headers, ['importe'])
+
+    if (dateCol !== -1 && descCol !== -1 && amountCol !== -1) {
+      return i
+    }
+  }
+  return -1
+}
+
+function findDutchHeaderRowIndex(arrayData: unknown[]): number {
+  for (let i = 0; i < Math.min(arrayData.length, 12); i++) {
+    const row = arrayData[i] as string[]
+    if (!Array.isArray(row)) continue
+
+    const headers = row.map((h) => String(h || '').trim())
+    const dateCol = findColumnIndex(headers, ['datum'])
+    const descCol = findColumnIndex(headers, ['naam', 'omschrijving'])
+    const amountCol = findColumnIndex(headers, ['bedrag'])
+    const debitCreditCol = findColumnIndex(headers, ['af bij'])
+
+    if (dateCol !== -1 && descCol !== -1 && amountCol !== -1 && debitCreditCol !== -1) {
+      return i
+    }
+  }
+  return -1
 }
 
 /**

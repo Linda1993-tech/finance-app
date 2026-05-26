@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { calculateNetSpent } from '@/lib/utils/budget-utils'
 
 export type CategoryMonthData = {
   categoryId: string
@@ -135,8 +136,8 @@ export async function getCategoryMonthBreakdown(months: number = 12) {
       sortedMonths.forEach((month) => {
         const amount = data.monthlyAmounts.get(month) || 0
         // Display absolute value (net spending after reimbursements)
-        monthlyAmounts[month] = Math.round(Math.abs(amount) * 100) / 100
-        total += Math.abs(amount)
+        monthlyAmounts[month] = Math.round(calculateNetSpent(amount) * 100) / 100
+        total += calculateNetSpent(amount)
       })
 
       return {

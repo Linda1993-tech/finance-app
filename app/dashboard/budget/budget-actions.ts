@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Budget } from '@/lib/types/database'
+import { calculateNetSpent } from '@/lib/utils/budget-utils'
 
 export type BudgetWithCategory = Budget & {
   category: {
@@ -192,7 +193,7 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
       // Sum all 12 months to get yearly total
       const yearlyBudget = Object.values(data.budgetByMonth).reduce((sum, amount) => sum + amount, 0)
       
-      const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
+      const spent = calculateNetSpent(spendingByCategory.get(categoryKey) || 0)
       const remaining = yearlyBudget - spent
       const percentage = yearlyBudget > 0 ? (spent / yearlyBudget) * 100 : 0
       
@@ -217,7 +218,7 @@ export async function getBudgetStatus(month: number, year: number, viewMode: 'mo
     // For monthly view: use budgets as-is
     statuses = budgets.map((budget) => {
       const categoryKey = budget.category_id || 'uncategorized'
-      const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
+      const spent = calculateNetSpent(spendingByCategory.get(categoryKey) || 0)
       const targetAmount = budget.amount
       const remaining = targetAmount - spent
       const percentage = targetAmount > 0 ? (spent / targetAmount) * 100 : 0
@@ -363,7 +364,7 @@ export async function getAllCategoriesBudgetStatus(month: number, year: number):
 
   for (const [categoryKey, categoryData] of uniqueCategories.entries()) {
     const budgetAmount = monthBudgetMap.get(categoryKey) || 0
-    const spent = Math.abs(spendingByCategory.get(categoryKey) || 0)
+    const spent = calculateNetSpent(spendingByCategory.get(categoryKey) || 0)
     const remaining = budgetAmount - spent
     const percentage = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0
 

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { MonthlyBudgetData } from './budget-year-overview-actions'
 import { updateBudgetForMonth } from './budget-actions'
+import { calculateNetSpent } from '@/lib/utils/budget-utils'
 
 type Props = {
   data: MonthlyBudgetData[]
@@ -115,7 +116,7 @@ export function BudgetYearOverviewClient({ data, year }: Props) {
   for (let month = 1; month <= 12; month++) {
     const budget = dataWithEdits.reduce((sum, cat) => sum + (cat.budgetByMonth[month] || 0), 0)
     const spentNet = dataWithEdits.reduce((sum, cat) => sum + (cat.spentByMonth[month] || 0), 0)
-    monthlyTotals.push({ budget, spent: Math.abs(spentNet) })
+    monthlyTotals.push({ budget, spent: calculateNetSpent(spentNet) })
   }
 
   const grandTotalBudget = dataWithEdits.reduce((sum, cat) => sum + cat.totalBudget, 0)
@@ -202,7 +203,7 @@ export function BudgetYearOverviewClient({ data, year }: Props) {
                   const monthNum = monthIdx + 1
                   const budget = category.budgetByMonth[monthNum] || 0
                   const spentNet = category.spentByMonth[monthNum] || 0
-                  const spent = Math.abs(spentNet)
+                  const spent = calculateNetSpent(spentNet)
                   const percentage = budget > 0 ? (spent / budget) * 100 : 0
                   const hasData = budget > 0 || spent > 0
                   const isEdited = getEditedBudget(category.category?.id || '', monthNum) !== null

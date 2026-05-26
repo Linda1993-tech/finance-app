@@ -6,6 +6,7 @@ import type { Category } from '@/lib/types/database'
 import { BudgetList } from './budget-list'
 import { SetBudgetForm } from './set-budget-form'
 import { formatEuro } from '@/lib/utils/currency-format'
+import { calculateNetSpent, getTopLevelBudgetStatuses } from '@/lib/utils/budget-utils'
 
 type Props = {
   initialBudgetStatuses: BudgetStatus[]
@@ -38,8 +39,9 @@ export function BudgetClient({ initialBudgetStatuses, categories, currentMonth, 
   }
 
   // Calculate totals
-  const totalBudget = budgetStatuses.reduce((sum, status) => sum + status.budget.amount, 0)
-  const totalSpent = budgetStatuses.reduce((sum, status) => sum + status.spent, 0)
+  const topLevelStatuses = getTopLevelBudgetStatuses(budgetStatuses)
+  const totalBudget = topLevelStatuses.reduce((sum, status) => sum + status.budget.amount, 0)
+  const totalSpent = topLevelStatuses.reduce((sum, status) => sum + status.spent, 0)
   const totalRemaining = totalBudget - totalSpent
   const overallPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
 

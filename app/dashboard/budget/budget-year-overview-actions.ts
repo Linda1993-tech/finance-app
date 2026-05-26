@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { calculateNetSpent } from '@/lib/utils/budget-utils'
 
 export type MonthlyBudgetData = {
   category: {
@@ -59,25 +60,29 @@ export async function getYearlyBudgetOverview(year: number): Promise<MonthlyBudg
     throw new Error('Failed to fetch transactions')
   }
 
-  // Build spending by category by month
-  // NOTE: Do NOT roll up to parents - show exact spending per category
+  // Build spending by category by month (roll up subcategories to parent budgets)
   const spendingMap = new Map<string, { [month: number]: number }>()
 
   for (const tx of transactions || []) {
     const txDate = new Date(tx.transaction_date)
     const month = txDate.getMonth() + 1 // 1-12
     const categoryId = tx.category_id || 'uncategorized'
-    // Use actual amount: negative for expenses, positive for reimbursements
-    // This allows reimbursements to offset expenses
     const amount = tx.amount
 
-    if (!spendingMap.has(categoryId)) {
-      spendingMap.set(categoryId, {})
+    const addToCategory = (id: string) => {
+      if (!spendingMap.has(id)) {
+        spendingMap.set(id, {})
+      }
+      const categorySpending = spendingMap.get(id)!
+      categorySpending[month] = (categorySpending[month] || 0) + amount
     }
-    const categorySpending = spendingMap.get(categoryId)!
-    categorySpending[month] = (categorySpending[month] || 0) + amount
 
-    // DON'T roll up to parent for budget table - we want exact amounts per category
+    addToCategory(categoryId)
+
+    const parentId = tx.categories?.parent_id
+    if (parentId) {
+      addToCategory(parentId)
+    }
   }
 
   // Build budget data by category
@@ -134,7 +139,7 @@ export async function getYearlyBudgetOverview(year: number): Promise<MonthlyBudg
     // Sum can be negative (expenses) or include positive (reimbursements)
     // Take absolute value for display (net spending)
     const netSpending = Object.values(spending).reduce((sum, amount) => sum + amount, 0)
-    data.totalSpent = Math.abs(netSpending)
+    data.totalSpent = calculateNetSpent(netSpending)
   }
 
   // Convert to array and sort by total budget (descending)

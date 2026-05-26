@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatEuro } from '@/lib/utils/currency-format'
+import { calculateNetSpent } from '@/lib/utils/budget-utils'
 
 export default async function DebugBudgetPage() {
   const supabase = await createClient()
@@ -37,7 +38,10 @@ export default async function DebugBudgetPage() {
     t => t.categories?.name === 'Leisure & entertainment'
   )
   
-  const leisureTotal = leisureTransactions?.reduce((sum, t) => sum + Math.abs(t.amount), 0) || 0
+  const leisureNet = leisureTransactions?.reduce((sum, t) => sum + t.amount, 0) || 0
+  const leisureTotal = calculateNetSpent(leisureNet)
+  const leisureOffsets =
+    leisureTransactions?.filter((t) => t.amount > 0).reduce((sum, t) => sum + t.amount, 0) || 0
   
   return (
     <div className="p-8 bg-gray-900 text-white min-h-screen">
@@ -74,11 +78,17 @@ export default async function DebugBudgetPage() {
         <h2 className="text-xl mb-2">Leisure & Entertainment Transactions (Jan 2026):</h2>
         <div className="bg-gray-800 p-4 rounded">
           <p className="mb-2">Count: {leisureTransactions?.length}</p>
-          <p className="mb-2 font-bold text-green-400">Total: {formatEuro(leisureTotal)}</p>
-          <p className="text-sm text-gray-400 mb-4">(This should match what shows in the budget table)</p>
+          <p className="mb-2 font-bold text-green-400">Net spent: {formatEuro(leisureTotal)}</p>
+          <p className="mb-2 text-sm text-yellow-300">
+            Offsets included: {formatEuro(leisureOffsets)}
+          </p>
+          <p className="text-sm text-gray-400 mb-4">
+            (Net = expenses minus offsets in this category)
+          </p>
           {leisureTransactions?.slice(0, 10).map(tx => (
             <div key={tx.id} className="text-sm mb-1">
-              {tx.transaction_date}: {tx.description} - {formatEuro(Math.abs(tx.amount))}
+              {tx.transaction_date}: {tx.description} - {formatEuro(tx.amount)}
+              {tx.amount > 0 && <span className="text-yellow-300 ml-2">↩ offset</span>}
             </div>
           ))}
         </div>

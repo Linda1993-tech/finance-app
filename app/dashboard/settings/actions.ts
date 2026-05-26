@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { UserPreferences } from '@/lib/types/database'
+import { calculateCurrentAccountBreakdown } from '@/lib/utils/current-account-utils'
 
 /**
  * Get user preferences
@@ -119,20 +120,27 @@ export async function getTransactionDebugInfo() {
     .eq('user_id', user.id)
     .single()
 
-  // Group transactions by account_type
-  const dutchTx = transactions?.filter(t => t.account_type === 'dutch') || []
-  const spanishTx = transactions?.filter(t => t.account_type === 'spanish') || []
-  const otherTx = transactions?.filter(t => t.account_type === 'other' || !t.account_type) || []
+  const breakdown = calculateCurrentAccountBreakdown(transactions || [], {
+    dutchStartingBalance: preferences?.dutch_account_starting_balance || 0,
+    dutchStartingDate: preferences?.dutch_account_starting_date || null,
+    spanishStartingBalance: preferences?.spanish_account_starting_balance || 0,
+    spanishStartingDate: preferences?.spanish_account_starting_date || null,
+  })
 
-  // Calculate totals after starting date
+  const dutchTx = transactions?.filter((t) => t.account_type === 'dutch') || []
+  const spanishTx = transactions?.filter((t) => t.account_type === 'spanish') || []
+  const otherTx =
+    transactions?.filter((t) => t.account_type === 'other' || !t.account_type) || []
+
   const dutchStartDate = preferences?.dutch_account_starting_date
   const spanishStartDate = preferences?.spanish_account_starting_date
 
-  const dutchAfterStart = dutchTx.filter(t => (!dutchStartDate || t.transaction_date > dutchStartDate))
-  const spanishAfterStart = spanishTx.filter(t => (!spanishStartDate || t.transaction_date > spanishStartDate))
-
-  const dutchTotal = dutchAfterStart.reduce((sum, t) => sum + t.amount, 0)
-  const spanishTotal = spanishAfterStart.reduce((sum, t) => sum + t.amount, 0)
+  const dutchAfterStart = dutchTx.filter(
+    (t) => !dutchStartDate || t.transaction_date > dutchStartDate
+  )
+  const spanishAfterStart = spanishTx.filter(
+    (t) => !spanishStartDate || t.transaction_date > spanishStartDate
+  )
 
   return {
     preferences,
@@ -145,19 +153,21 @@ export async function getTransactionDebugInfo() {
     afterStartingDate: {
       dutch: {
         count: dutchAfterStart.length,
-        total: dutchTotal,
-        transactions: dutchAfterStart.slice(0, 10), // First 10 for review
+        total: breakdown.dutchTransactionsTotal,
+        transactions: dutchAfterStart.slice(0, 10),
       },
       spanish: {
         count: spanishAfterStart.length,
-        total: spanishTotal,
+        total: breakdown.spanishTransactionsTotal,
         transactions: spanishAfterStart.slice(0, 10),
       },
     },
     calculatedBalance: {
-      dutch: (preferences?.dutch_account_starting_balance || 0) + dutchTotal,
-      spanish: (preferences?.spanish_account_starting_balance || 0) + spanishTotal,
-      total: (preferences?.dutch_account_starting_balance || 0) + (preferences?.spanish_account_starting_balance || 0) + dutchTotal + spanishTotal,
+      dutch: breakdown.dutchAccountBalance,
+      spanish: breakdown.spanishAccountBalance,
+      total: breakdown.currentAccount,
+      transferImpact: breakdown.transferImpact,
+      excludedOtherCount: breakdown.excludedOtherCount,
     },
   }
 }

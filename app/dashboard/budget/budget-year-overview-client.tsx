@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import type { MonthlyBudgetData } from './budget-year-overview-actions'
 import { updateBudgetForMonth } from './budget-actions'
 import { calculateNetSpent } from '@/lib/utils/budget-utils'
+import { BudgetCellTransactionsModal } from './budget-cell-transactions-modal'
 
 type Props = {
   data: MonthlyBudgetData[]
@@ -14,6 +14,14 @@ type Props = {
 type BudgetEdit = {
   categoryId: string
   month: number
+  budget: number
+}
+
+type SelectedCell = {
+  categoryId: string
+  categoryName: string
+  categoryIcon: string | null
+  month: number | null
   budget: number
 }
 
@@ -33,9 +41,9 @@ const MONTHS = [
 ]
 
 export function BudgetYearOverviewClient({ data, year }: Props) {
-  const router = useRouter()
   const [edits, setEdits] = useState<Map<string, BudgetEdit>>(new Map())
   const [isSaving, setIsSaving] = useState(false)
+  const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null)
 
   function handleEdit(categoryId: string, month: number, budget: number) {
     const key = `${categoryId}-${month}`
@@ -72,6 +80,7 @@ export function BudgetYearOverviewClient({ data, year }: Props) {
             category_id: edit.categoryId,
             month: edit.month,
             budget: edit.budget,
+            year,
           })
         )
       )
@@ -124,6 +133,17 @@ export function BudgetYearOverviewClient({ data, year }: Props) {
 
   return (
     <div className="space-y-4">
+      {selectedCell && (
+        <BudgetCellTransactionsModal
+          categoryId={selectedCell.categoryId}
+          categoryName={selectedCell.categoryName}
+          categoryIcon={selectedCell.categoryIcon}
+          year={year}
+          month={selectedCell.month}
+          budget={selectedCell.budget}
+          onClose={() => setSelectedCell(null)}
+        />
+      )}
       {/* Save/Cancel Buttons (sticky) */}
       {edits.size > 0 && (
         <div className="sticky top-0 z-10 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg p-4 flex items-center justify-between">
@@ -228,15 +248,15 @@ export function BudgetYearOverviewClient({ data, year }: Props) {
                       key={month}
                       className={`px-3 py-3 text-center text-sm cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all ${bgColor}`}
                       onClick={() => {
-                        const newBudget = prompt(
-                          `Budget for ${category.category?.name || 'category'} in ${month}:`,
-                          budget.toString()
-                        )
-                        if (newBudget !== null && newBudget !== '') {
-                          handleEdit(category.category?.id || '', monthNum, parseFloat(newBudget) || 0)
-                        }
+                        setSelectedCell({
+                          categoryId: category.category?.id || '',
+                          categoryName: category.category?.name || 'Uncategorized',
+                          categoryIcon: category.category?.icon || null,
+                          month: monthNum,
+                          budget,
+                        })
                       }}
-                      title="Click to edit budget"
+                      title="Klik om transacties te zien"
                     >
                       {hasData ? (
                         <div>
@@ -272,7 +292,24 @@ export function BudgetYearOverviewClient({ data, year }: Props) {
                 })}
 
                 {/* Total Column */}
-                <td className="px-4 py-3 text-right text-sm font-semibold">
+                <td
+                  className={`px-4 py-3 text-right text-sm font-semibold ${
+                    category.totalSpent > 0 || category.totalBudget > 0
+                      ? 'cursor-pointer hover:ring-2 hover:ring-blue-400'
+                      : ''
+                  }`}
+                  onClick={() => {
+                    if (category.totalSpent <= 0 && category.totalBudget <= 0) return
+                    setSelectedCell({
+                      categoryId: category.category?.id || '',
+                      categoryName: category.category?.name || 'Uncategorized',
+                      categoryIcon: category.category?.icon || null,
+                      month: null,
+                      budget: category.totalBudget,
+                    })
+                  }}
+                  title="Klik om transacties te zien"
+                >
                   <div className="text-gray-900 dark:text-gray-100">
                     €{category.totalSpent.toFixed(0)}
                   </div>

@@ -22,6 +22,23 @@ export type BudgetStatus = {
   percentage: number
 }
 
+export type BudgetCellTransaction = {
+  id: string
+  transaction_date: string
+  description: string
+  amount: number
+  is_income: boolean
+  category_name: string | null
+}
+
+export type BudgetCellDetails = {
+  transactions: BudgetCellTransaction[]
+  netSpent: number
+  budget: number
+  categoryName: string
+  monthLabel: string
+}
+
 /**
  * Get budgets for a specific month/year
  */
@@ -395,14 +412,152 @@ export async function upsertBudget(
 }
 
 /**
+ * Get transactions that make up a budget cell (category + month, or year total).
+ */
+export async function getBudgetCellTransactions(
+  categoryId: string,
+  year: number,
+  month: number | null
+): Promise<BudgetCellDetails> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  const { data: category } = await supabase
+    .from('categories')
+    .select('id, name, parent_id')
+    .eq('id', categoryId)
+    .eq('user_id', user.id)
+    .single()
+
+  const categoryName = category?.name || 'Uncategorized'
+
+  let startDate: string
+  let endDate: string
+  let monthLabel: string
+
+  if (month === null) {
+    startDate = `${year}-01-01`
+    endDate = `${year}-12-31`
+    monthLabel = `Hele ${year}`
+  } else {
+    startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    monthLabel = new Date(year, month - 1).toLocaleDateString('nl-NL', {
+      month: 'long',
+      year: 'numeric',
+    })
+  }
+
+  const categoryIds = [categoryId]
+  if (category && !category.parent_id) {
+    const { data: subcategories } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('parent_id', categoryId)
+
+    for (const sub of subcategories || []) {
+      categoryIds.push(sub.id)
+    }
+  }
+
+  let budgetAmount = 0
+  if (month === null) {
+    const { data: budgets } = await supabase
+      .from('budgets')
+      .select('amount')
+      .eq('user_id', user.id)
+      .eq('category_id', categoryId)
+      .eq('year', year)
+
+    budgetAmount = (budgets || []).reduce((sum, b) => sum + b.amount, 0)
+  } else {
+    const { data: budget } = await supabase
+      .from('budgets')
+      .select('amount')
+      .eq('user_id', user.id)
+      .eq('category_id', categoryId)
+      .eq('year', year)
+      .eq('month', month)
+      .maybeSingle()
+
+    budgetAmount = budget?.amount || 0
+  }
+
+  const { data: transactions, error } = await supabase
+    .from('transactions')
+    .select('id, transaction_date, description, amount, is_transfer, is_income, category_id, categories(name)')
+    .eq('user_id', user.id)
+    .eq('is_transfer', false)
+    .or('is_income.eq.false,and(is_income.eq.true,amount.gt.0,category_id.not.is.null)')
+    .in('category_id', categoryIds)
+    .gte('transaction_date', startDate)
+    .lte('transaction_date', endDate)
+    .order('transaction_date', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching budget cell transactions:', error)
+    throw new Error('Failed to fetch transactions')
+  }
+
+  type RawTransaction = {
+    id: string
+    transaction_date: string
+    description: string
+    amount: number
+    is_transfer: boolean
+    is_income: boolean
+    category_id: string | null
+    categories: { name: string } | { name: string }[] | null
+  }
+
+  const filtered = ((transactions || []) as unknown as RawTransaction[]).filter(
+    (tx) =>
+      !tx.is_transfer &&
+      (!tx.is_income || (tx.amount > 0 && tx.category_id !== null))
+  )
+
+  const mapped: BudgetCellTransaction[] = filtered.map((tx) => {
+    const joinedCategory = Array.isArray(tx.categories) ? tx.categories[0] : tx.categories
+    return {
+      id: tx.id,
+      transaction_date: tx.transaction_date,
+      description: tx.description,
+      amount: tx.amount,
+      is_income: tx.is_income,
+      category_name: joinedCategory?.name || null,
+    }
+  })
+
+  const signedSum = filtered.reduce((sum, tx) => sum + tx.amount, 0)
+
+  return {
+    transactions: mapped,
+    netSpent: calculateNetSpent(signedSum),
+    budget: budgetAmount,
+    categoryName,
+    monthLabel,
+  }
+}
+
+/**
  * Update budget for a specific month (inline editing)
  */
 export async function updateBudgetForMonth(input: {
   category_id: string
   month: number
   budget: number
+  year?: number
 }): Promise<{ success: boolean; error?: string }> {
-  const year = new Date().getFullYear()
+  const year = input.year ?? new Date().getFullYear()
   return upsertBudget(input.category_id, input.budget, input.month, year)
 }
 

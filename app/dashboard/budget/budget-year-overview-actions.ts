@@ -63,7 +63,19 @@ export async function getYearlyBudgetOverview(year: number): Promise<MonthlyBudg
   // Build spending by category by month (roll up subcategories to parent budgets)
   const spendingMap = new Map<string, { [month: number]: number }>()
 
-  for (const tx of transactions || []) {
+  type TransactionWithCategory = {
+    amount: number
+    category_id: string | null
+    transaction_date: string
+    categories: {
+      id: string
+      parent_id: string | null
+    } | null
+  }
+
+  const typedTransactions = (transactions || []) as unknown as TransactionWithCategory[]
+
+  for (const tx of typedTransactions) {
     const txDate = new Date(tx.transaction_date)
     const month = txDate.getMonth() + 1 // 1-12
     const categoryId = tx.category_id || 'uncategorized'

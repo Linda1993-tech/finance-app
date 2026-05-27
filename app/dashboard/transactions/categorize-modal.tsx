@@ -9,6 +9,8 @@ import {
   getDefaultCategorizeOption,
   getSavingsEntryTypeFromTransactionAmount,
   isVariableMerchant,
+  resolveOnceCategorizeOption,
+  shouldDefaultExcludeFromLearning,
 } from '@/lib/utils/transaction-utils'
 
 type Transaction = {
@@ -28,18 +30,23 @@ type Props = {
 
 type RememberOption = 'rule' | 'once'
 
-export function CategorizeModal({ transaction, categories, onClose }: Props) {
-  const defaultRemember = getDefaultCategorizeOption(
-    transaction.normalized_description,
-    transaction.learning_key
-  )
-  const isVariable = isVariableMerchant(
-    transaction.normalized_description,
-    transaction.learning_key
-  )
+function getOnceOptionDescription(
+  normalizedDescription: string,
+  learningKey: string | null
+): string {
+  if (shouldDefaultExcludeFromLearning(normalizedDescription, learningKey)) {
+    return 'Geen rule — te generieke omschrijving om van te leren (transferencia, traspaso, etc.)'
+  }
+  if (isVariableMerchant(normalizedDescription, learningKey)) {
+    return 'Geen rule — bestaande rules worden niet op deze transactie toegepast (Bizum, Amazon, etc.)'
+  }
+  return 'Geen rule — volgende vergelijkbare transactie opnieuw categoriseren'
+}
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [rememberOption, setRememberOption] = useState<RememberOption>(defaultRemember)
+export function CategorizeModal({ transaction, categories, onClose }: Props) {
+  const [rememberOption, setRememberOption] = useState<RememberOption>(
+    getDefaultCategorizeOption(transaction.normalized_description, transaction.learning_key)
+  )
   const [isTransfer, setIsTransfer] = useState(false)
   const [isIncome, setIsIncome] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,6 +54,7 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
   const [selectedSavingsAccount, setSelectedSavingsAccount] = useState<string>('')
   const savingsEntryType = getSavingsEntryTypeFromTransactionAmount(transaction.amount)
   const [learningKey, setLearningKey] = useState(transaction.learning_key || '')
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
 
   useEffect(() => {
     async function loadSavingsAccounts() {
@@ -64,10 +72,21 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
   const getSubcategories = (parentId: string) =>
     categories.filter((c) => c.parent_id === parentId)
 
+  const isGenericTransfer = shouldDefaultExcludeFromLearning(
+    transaction.normalized_description,
+    transaction.learning_key
+  )
+  const isVariable = isVariableMerchant(
+    transaction.normalized_description,
+    transaction.learning_key
+  )
+
   function toBackendOption(): CategorizeOption {
     if (rememberOption === 'rule') return 'rule'
-    // Variable merchants: also skip auto-apply of existing rules
-    return isVariable ? 'no-auto' : 'once'
+    return resolveOnceCategorizeOption(
+      transaction.normalized_description,
+      learningKey.trim() || transaction.learning_key
+    )
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -242,9 +261,10 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Onthouden?
             </label>
-            {isVariable && (
+            {(isGenericTransfer || isVariable) && rememberOption === 'once' && (
               <p className="text-xs text-orange-600 dark:text-orange-400 mb-2">
-                💡 Bizum, Amazon, Bol.com etc. — standaard alleen deze transactie
+                💡 Standaard: alleen deze transactie
+                {isGenericTransfer && ' — generieke omschrijving, niet leren'}
               </p>
             )}
             <div className="space-y-2">
@@ -294,7 +314,10 @@ export function CategorizeModal({ transaction, categories, onClose }: Props) {
                     🔷 Alleen deze transactie
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Geen rule aanmaken — volgende keer opnieuw categoriseren
+                    {getOnceOptionDescription(
+                      transaction.normalized_description,
+                      learningKey.trim() || transaction.learning_key
+                    )}
                   </div>
                 </div>
               </label>

@@ -147,3 +147,88 @@ export async function autoCategorizeWithPatterns() {
   return { success: true, count: categorizedCount }
 }
 
+/**
+ * Update an existing categorization rule
+ */
+export async function updateCategorizationRule(
+  ruleId: string,
+  input: { learning_key: string; category_id: string }
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const learningKey = input.learning_key.trim()
+  if (!learningKey) {
+    return { success: false, error: 'Learning key is required' }
+  }
+
+  const { data: duplicate } = await supabase
+    .from('categorization_rules')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('learning_key', learningKey)
+    .neq('id', ruleId)
+    .maybeSingle()
+
+  if (duplicate) {
+    return { success: false, error: 'A rule with this learning key already exists' }
+  }
+
+  const { error } = await supabase
+    .from('categorization_rules')
+    .update({
+      learning_key: learningKey,
+      category_id: input.category_id,
+    })
+    .eq('id', ruleId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Error updating rule:', error)
+    return { success: false, error: 'Failed to update rule' }
+  }
+
+  revalidatePath('/dashboard/rules')
+  revalidatePath('/dashboard/transactions')
+  return { success: true }
+}
+
+/**
+ * Delete a categorization rule
+ */
+export async function deleteCategorizationRule(
+  ruleId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const { error } = await supabase
+    .from('categorization_rules')
+    .delete()
+    .eq('id', ruleId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Error deleting rule:', error)
+    return { success: false, error: 'Failed to delete rule' }
+  }
+
+  revalidatePath('/dashboard/rules')
+  revalidatePath('/dashboard/transactions')
+  return { success: true }
+}
+

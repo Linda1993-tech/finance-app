@@ -133,6 +133,22 @@ export function generateLearningKey(normalizedDescription: string): string {
  */
 const VARIABLE_MERCHANTS = ['BIZUM', 'AMAZON', 'BOLCOM', 'BOL COM', 'PAYPAL', 'REVOLUT']
 
+/**
+ * Generic transfer/payment labels — too broad to learn from (default: exclude from learning)
+ */
+const NO_LEARN_DEFAULTS = [
+  'TRANSFERENCIA',
+  'TRANSFER',
+  'TRASPASO',
+  'OVERBOEKING',
+  'OVERBOEKINGING',
+  'INGRESO FONDOS',
+  'INGRESO',
+  'EMITIDO',
+  'RECIBIDA',
+  'RECIBIDO',
+]
+
 export function isVariableMerchant(
   normalizedDescription: string,
   learningKey?: string | null
@@ -144,13 +160,39 @@ export function isVariableMerchant(
   })
 }
 
+export function shouldDefaultExcludeFromLearning(
+  normalizedDescription: string,
+  learningKey?: string | null
+): boolean {
+  const text = `${normalizedDescription} ${learningKey || ''}`.toUpperCase()
+  return NO_LEARN_DEFAULTS.some((term) => {
+    const compact = term.replace(/\s/g, '')
+    const textCompact = text.replace(/\s/g, '')
+    return text.includes(term) || textCompact.includes(compact)
+  })
+}
+
 export type DefaultCategorizeOption = 'rule' | 'once'
 
 export function getDefaultCategorizeOption(
   normalizedDescription: string,
   learningKey?: string | null
 ): DefaultCategorizeOption {
-  return isVariableMerchant(normalizedDescription, learningKey) ? 'once' : 'rule'
+  if (shouldDefaultExcludeFromLearning(normalizedDescription, learningKey)) return 'once'
+  if (isVariableMerchant(normalizedDescription, learningKey)) return 'once'
+  return 'rule'
+}
+
+/**
+ * Maps UI "only this transaction" to the correct backend categorize option.
+ */
+export function resolveOnceCategorizeOption(
+  normalizedDescription: string,
+  learningKey?: string | null
+): 'once' | 'exclude' | 'no-auto' {
+  if (shouldDefaultExcludeFromLearning(normalizedDescription, learningKey)) return 'exclude'
+  if (isVariableMerchant(normalizedDescription, learningKey)) return 'no-auto'
+  return 'once'
 }
 
 /**

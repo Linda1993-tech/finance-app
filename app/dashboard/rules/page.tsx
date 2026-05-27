@@ -2,6 +2,7 @@ import { getCategorizationRules } from '../transactions/categorization-actions'
 import { getTransactions } from '../import/actions'
 import { getCategories } from '../categories/actions'
 import { CreateRuleForm } from './create-rule-form'
+import { RulesList } from './rules-list'
 
 export default async function RulesPage() {
   const rules = await getCategorizationRules()
@@ -66,71 +67,7 @@ export default async function RulesPage() {
             </a>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Your Learning Rules
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Learning Key
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Confidence
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Matches
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {rulesWithCounts.map((rule) => (
-                    <tr key={rule.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-6 py-4">
-                        <code className="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-900 dark:text-gray-300">
-                          {rule.learning_key}
-                        </code>
-                        {rule.learning_key.includes(':') && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {rule.learning_key.startsWith('contains:') && '📍 Contains'}
-                            {rule.learning_key.startsWith('starts_with:') && '▶️ Starts with'}
-                            {rule.learning_key.startsWith('exact:') && '🎯 Exact match'}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-2">
-                          {rule.category?.icon && <span>{rule.category.icon}</span>}
-                          <span className="text-gray-900 dark:text-gray-300">
-                            {rule.category?.name || 'Unknown'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {rule.confidence}x
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {rule.matchingCount > 0 ? (
-                          <span className="text-green-600 dark:text-green-400 font-medium">
-                            {rule.matchingCount} transactions
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 dark:text-gray-500">No matches</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <RulesList rules={rulesWithCounts} categories={categories} />
         )}
 
         {/* Uncategorized Transactions Sample */}

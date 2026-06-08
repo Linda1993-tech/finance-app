@@ -10,7 +10,8 @@ export async function middleware(request: NextRequest) {
   // Avoid Supabase network I/O on Edge for public entry routes — prevents
   // MIDDLEWARE_INVOCATION_TIMEOUT when Auth is slow or unreachable.
   // Session refresh for / and /login happens in Server Components / client instead.
-  if (pathname === '/' || pathname === '/login') {
+  // /auth/* handles email confirmation callbacks and must run before any session exists.
+  if (pathname === '/' || pathname === '/login' || pathname.startsWith('/auth')) {
     return NextResponse.next()
   }
 

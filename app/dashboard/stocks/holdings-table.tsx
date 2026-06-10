@@ -29,7 +29,7 @@ export function HoldingsTable({ stocks, currentPrices, dividendYields, annualDiv
   }
 
   const handleDelete = async (id: string, ticker: string) => {
-    if (!confirm(`Weet je zeker dat je ${ticker} wilt verwijderen?`)) return
+    if (!confirm(`Weet je zeker dat je ${ticker} wilt verwijderen? De bijbehorende transacties worden ook verwijderd.`)) return
     const result = await deleteStock(id)
     if (!result.success) {
       alert(`Error: ${result.error}`)

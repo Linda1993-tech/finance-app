@@ -141,6 +141,14 @@ export async function deleteStock(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  // Look up the ticker first so we can remove its transactions too
+  const { data: stock } = await supabase
+    .from('stocks')
+    .select('ticker')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('stocks')
     .delete()
@@ -151,6 +159,19 @@ export async function deleteStock(id: string) {
     console.error('Error deleting stock:', error)
     return { success: false, error: error.message }
   }
+
+  if (stock?.ticker) {
+    const { error: txError } = await supabase
+      .from('stock_transactions')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('ticker', stock.ticker)
+
+    if (txError) {
+      console.error('Error deleting stock transactions:', txError)
+    }
+  }
+
   revalidatePath('/dashboard/stocks')
   return { success: true }
 }
@@ -334,28 +355,29 @@ export async function importDeGiroTransactions(
   let imported = 0
   let duplicates = 0
 
+  // Existing transactions for dedup across ALL tickers, so re-importing the
+  // same file with a different ticker doesn't create duplicate positions.
+  // Match on DeGiro order id in notes, or on date + quantity + total for
+  // rows without an order id.
+  const { data: existing } = await supabase
+    .from('stock_transactions')
+    .select('transaction_date, quantity, total_amount, notes')
+    .eq('user_id', user.id)
+
+  const existingOrderIds = new Set(
+    (existing || [])
+      .map((t) => t.notes?.match(/DeGiro:(\S+)/)?.[1])
+      .filter(Boolean)
+  )
+  const existingKeys = new Set(
+    (existing || []).map(
+      (t) => `${t.transaction_date}|${t.quantity}|${t.total_amount}`
+    )
+  )
+
   for (const item of items) {
     const ticker = item.ticker.trim().toUpperCase()
     if (!ticker) continue
-
-    // Existing transactions for dedup (match on DeGiro order id in notes,
-    // or on date + quantity + total for rows without an order id)
-    const { data: existing } = await supabase
-      .from('stock_transactions')
-      .select('transaction_date, quantity, total_amount, notes')
-      .eq('user_id', user.id)
-      .eq('ticker', ticker)
-
-    const existingOrderIds = new Set(
-      (existing || [])
-        .map((t) => t.notes?.match(/DeGiro:(\S+)/)?.[1])
-        .filter(Boolean)
-    )
-    const existingKeys = new Set(
-      (existing || []).map(
-        (t) => `${t.transaction_date}|${t.quantity}|${t.total_amount}`
-      )
-    )
 
     const rows = []
     for (const tx of item.transactions) {

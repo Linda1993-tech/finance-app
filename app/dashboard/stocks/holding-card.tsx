@@ -55,7 +55,7 @@ export function HoldingCard({ stock, currentPrice, dividendYield, annualDividend
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete ${stock.ticker}?`)) return
+    if (!confirm(`Weet je zeker dat je ${stock.ticker} wilt verwijderen? De bijbehorende transacties worden ook verwijderd.`)) return
     setIsDeleting(true)
     const result = await deleteStock(stock.id)
     if (!result.success) {

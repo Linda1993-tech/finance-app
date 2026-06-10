@@ -301,6 +301,176 @@ async function updateStockPosition(
   }
 }
 
+// ============== DEGIRO IMPORT ==============
+
+export type DeGiroImportItem = {
+  ticker: string
+  name: string
+  currency: string
+  transactions: {
+    date: string
+    quantity: number // positive = buy, negative = sell
+    price: number
+    fees: number
+    total: number
+    orderId: string | null
+  }[]
+}
+
+export type DeGiroImportResult = {
+  success: boolean
+  imported?: number
+  duplicates?: number
+  error?: string
+}
+
+export async function importDeGiroTransactions(
+  items: DeGiroImportItem[]
+): Promise<DeGiroImportResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  let imported = 0
+  let duplicates = 0
+
+  for (const item of items) {
+    const ticker = item.ticker.trim().toUpperCase()
+    if (!ticker) continue
+
+    // Existing transactions for dedup (match on DeGiro order id in notes,
+    // or on date + quantity + total for rows without an order id)
+    const { data: existing } = await supabase
+      .from('stock_transactions')
+      .select('transaction_date, quantity, total_amount, notes')
+      .eq('user_id', user.id)
+      .eq('ticker', ticker)
+
+    const existingOrderIds = new Set(
+      (existing || [])
+        .map((t) => t.notes?.match(/DeGiro:(\S+)/)?.[1])
+        .filter(Boolean)
+    )
+    const existingKeys = new Set(
+      (existing || []).map(
+        (t) => `${t.transaction_date}|${t.quantity}|${t.total_amount}`
+      )
+    )
+
+    const rows = []
+    for (const tx of item.transactions) {
+      const isDuplicate = tx.orderId
+        ? existingOrderIds.has(tx.orderId)
+        : existingKeys.has(`${tx.date}|${Math.abs(tx.quantity)}|${tx.total}`)
+
+      if (isDuplicate) {
+        duplicates++
+        continue
+      }
+
+      rows.push({
+        user_id: user.id,
+        transaction_date: tx.date,
+        transaction_type: tx.quantity >= 0 ? ('buy' as const) : ('sell' as const),
+        ticker,
+        quantity: Math.abs(tx.quantity),
+        price_per_share: tx.price,
+        total_amount: tx.total,
+        fees: tx.fees,
+        currency: item.currency,
+        notes: tx.orderId ? `DeGiro:${tx.orderId}` : 'DeGiro import',
+      })
+    }
+
+    if (rows.length > 0) {
+      const { error } = await supabase.from('stock_transactions').insert(rows)
+      if (error) {
+        console.error('Error importing DeGiro transactions:', error)
+        return { success: false, error: `Import mislukt voor ${ticker}: ${error.message}` }
+      }
+      imported += rows.length
+    }
+
+    await rebuildStockPosition(user.id, ticker, item.name, item.currency)
+  }
+
+  revalidatePath('/dashboard/stocks')
+  revalidatePath('/dashboard')
+  return { success: true, imported, duplicates }
+}
+
+/**
+ * Rebuild a stock position from all its buy/sell transactions (chronological,
+ * average cost method). Used after bulk imports.
+ */
+async function rebuildStockPosition(
+  userId: string,
+  ticker: string,
+  name: string,
+  currency: string
+) {
+  const supabase = await createClient()
+
+  const { data: transactions } = await supabase
+    .from('stock_transactions')
+    .select('transaction_date, transaction_type, quantity, price_per_share, fees')
+    .eq('user_id', userId)
+    .eq('ticker', ticker)
+    .in('transaction_type', ['buy', 'sell'])
+    .order('transaction_date', { ascending: true })
+
+  let quantity = 0
+  let totalCost = 0
+
+  for (const tx of transactions || []) {
+    const q = tx.quantity || 0
+    if (tx.transaction_type === 'buy') {
+      quantity += q
+      totalCost += q * (tx.price_per_share || 0) + (tx.fees || 0)
+    } else {
+      const avgCost = quantity > 0 ? totalCost / quantity : 0
+      totalCost -= q * avgCost
+      quantity -= q
+    }
+  }
+
+  const { data: stock } = await supabase
+    .from('stocks')
+    .select('id, name')
+    .eq('user_id', userId)
+    .eq('ticker', ticker)
+    .maybeSingle()
+
+  if (quantity <= 0) {
+    if (stock) {
+      await supabase.from('stocks').delete().eq('id', stock.id)
+    }
+    return
+  }
+
+  const averageCost = totalCost / quantity
+
+  if (stock) {
+    await supabase
+      .from('stocks')
+      .update({
+        quantity,
+        average_cost: averageCost,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', stock.id)
+  } else {
+    await supabase.from('stocks').insert({
+      user_id: userId,
+      ticker,
+      name: name || ticker,
+      quantity,
+      average_cost: averageCost,
+      currency,
+    })
+  }
+}
+
 // ============== PORTFOLIO STATS ==============
 
 export type PortfolioStats = {

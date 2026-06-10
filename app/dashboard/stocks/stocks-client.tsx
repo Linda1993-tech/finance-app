@@ -5,6 +5,7 @@ import type { Stock, StockTransaction } from '@/lib/types/database'
 import { formatEuro, formatNumber } from '@/lib/utils/currency-format'
 import { AddStockForm } from './add-stock-form'
 import { AddTransactionForm } from './add-transaction-form'
+import { ImportDeGiro } from './import-degiro'
 import { HoldingCard } from './holding-card'
 import { HoldingsTable } from './holdings-table'
 import { fetchStockQuotes, updateStockName, updateStockPrice } from './actions'
@@ -17,6 +18,7 @@ type Props = {
 export function StocksClient({ initialStocks, initialTransactions }: Props) {
   const [showAddStock, setShowAddStock] = useState(false)
   const [showAddTransaction, setShowAddTransaction] = useState(false)
+  const [showImportDeGiro, setShowImportDeGiro] = useState(false)
   const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({})
   const [dividendYields, setDividendYields] = useState<Record<string, number>>({})
   const [annualDividends, setAnnualDividends] = useState<Record<string, number>>({})
@@ -201,6 +203,12 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
         <div className="flex justify-between items-center mb-6">
           <div className="flex gap-3">
             <button
+              onClick={() => setShowImportDeGiro(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <span className="text-lg">📥</span> Import DeGiro CSV
+            </button>
+            <button
               onClick={() => setShowAddTransaction(true)}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
             >
@@ -371,6 +379,9 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
       )}
       {showAddTransaction && (
         <AddTransactionForm onClose={() => setShowAddTransaction(false)} />
+      )}
+      {showImportDeGiro && (
+        <ImportDeGiro onClose={() => setShowImportDeGiro(false)} />
       )}
     </div>
   )

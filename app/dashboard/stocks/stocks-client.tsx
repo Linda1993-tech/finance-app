@@ -120,8 +120,14 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
     return sum + convertToEUR(stock.quantity * currentPrice, stock.currency || 'EUR')
   }, 0)
 
+  // Cost basis: use the FX rate at purchase when known (euros actually spent,
+  // like DeGiro), falling back to the current rate
   const totalCost = initialStocks.reduce((sum, stock) => {
-    return sum + convertToEUR(stock.quantity * stock.average_cost, stock.currency || 'EUR')
+    return sum + convertToEUR(
+      stock.quantity * stock.average_cost,
+      stock.currency || 'EUR',
+      stock.exchange_rate_at_purchase ?? undefined
+    )
   }, 0)
 
   const totalGainLoss = totalValue - totalCost

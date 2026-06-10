@@ -547,23 +547,30 @@ async function rebuildStockPosition(
 
   const { data: transactions } = await supabase
     .from('stock_transactions')
-    .select('transaction_date, transaction_type, quantity, price_per_share, fees')
+    .select('transaction_date, transaction_type, quantity, price_per_share, fees, total_amount')
     .eq('user_id', userId)
     .eq('ticker', ticker)
     .in('transaction_type', ['buy', 'sell'])
     .order('transaction_date', { ascending: true })
 
   let quantity = 0
-  let totalCost = 0
+  let totalCostLocal = 0 // in the stock's own currency, excl. fees
+  let totalCostEur = 0 // actual EUR spent (DeGiro "Totaal", incl. fees, historical FX rate)
 
   for (const tx of transactions || []) {
     const q = tx.quantity || 0
+    const localAmount = q * (tx.price_per_share || 0)
+    const eurAmount = Math.abs(tx.total_amount || 0) || localAmount + (tx.fees || 0)
+
     if (tx.transaction_type === 'buy') {
       quantity += q
-      totalCost += q * (tx.price_per_share || 0) + (tx.fees || 0)
+      totalCostLocal += localAmount
+      totalCostEur += eurAmount
     } else {
-      const avgCost = quantity > 0 ? totalCost / quantity : 0
-      totalCost -= q * avgCost
+      const avgLocal = quantity > 0 ? totalCostLocal / quantity : 0
+      const avgEur = quantity > 0 ? totalCostEur / quantity : 0
+      totalCostLocal -= q * avgLocal
+      totalCostEur -= q * avgEur
       quantity -= q
     }
   }
@@ -582,7 +589,10 @@ async function rebuildStockPosition(
     return
   }
 
-  const averageCost = totalCost / quantity
+  const averageCost = totalCostLocal / quantity
+  // Implied historical EUR rate per unit of local currency (1 for EUR stocks,
+  // apart from fees). Lets us report cost basis as the euros actually spent.
+  const exchangeRateAtPurchase = totalCostLocal > 0 ? totalCostEur / totalCostLocal : null
 
   if (stock) {
     await supabase
@@ -590,6 +600,7 @@ async function rebuildStockPosition(
       .update({
         quantity,
         average_cost: averageCost,
+        exchange_rate_at_purchase: exchangeRateAtPurchase,
         updated_at: new Date().toISOString(),
       })
       .eq('id', stock.id)
@@ -600,6 +611,7 @@ async function rebuildStockPosition(
       name: name || ticker,
       quantity,
       average_cost: averageCost,
+      exchange_rate_at_purchase: exchangeRateAtPurchase,
       currency,
     })
   }

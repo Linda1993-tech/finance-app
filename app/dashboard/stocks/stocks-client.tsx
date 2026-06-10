@@ -8,7 +8,7 @@ import { AddTransactionForm } from './add-transaction-form'
 import { ImportDeGiro } from './import-degiro'
 import { HoldingCard } from './holding-card'
 import { HoldingsTable } from './holdings-table'
-import { fetchStockQuotes, updateStockName, updateStockPrice } from './actions'
+import { fetchStockQuotes, updateStockName, updateStockPrice, deleteAllStockData } from './actions'
 
 type Props = {
   initialStocks: Stock[]
@@ -23,6 +23,7 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
   const [dividendYields, setDividendYields] = useState<Record<string, number>>({})
   const [annualDividends, setAnnualDividends] = useState<Record<string, number>>({})
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isDeletingAll, setIsDeletingAll] = useState(false)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table') // Default to table view
 
   // Fetch live prices on mount
@@ -93,6 +94,24 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
   useEffect(() => {
     fetchPrices()
   }, [])
+
+  const handleDeleteAll = async () => {
+    if (
+      !confirm(
+        `Weet je zeker dat je AL je posities (${initialStocks.length}) en aandelentransacties wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`
+      )
+    )
+      return
+
+    setIsDeletingAll(true)
+    const result = await deleteAllStockData()
+    if (result.success) {
+      window.location.reload()
+    } else {
+      alert(`Verwijderen mislukt: ${result.error}`)
+      setIsDeletingAll(false)
+    }
+  }
 
   // Calculate portfolio stats
   const totalValue = initialStocks.reduce((sum, stock) => {
@@ -228,6 +247,16 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
             >
               <span className="text-lg">✏️</span> Manual Entry
             </button>
+            {initialStocks.length > 0 && (
+              <button
+                onClick={handleDeleteAll}
+                disabled={isDeletingAll}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="text-lg">🗑️</span>
+                {isDeletingAll ? 'Verwijderen...' : 'Alles verwijderen'}
+              </button>
+            )}
           </div>
 
           {/* View Mode Toggle */}

@@ -176,6 +176,36 @@ export async function deleteStock(id: string) {
   return { success: true }
 }
 
+export async function deleteAllStockData() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error: txError } = await supabase
+    .from('stock_transactions')
+    .delete()
+    .eq('user_id', user.id)
+
+  if (txError) {
+    console.error('Error deleting stock transactions:', txError)
+    return { success: false, error: txError.message }
+  }
+
+  const { error: stockError } = await supabase
+    .from('stocks')
+    .delete()
+    .eq('user_id', user.id)
+
+  if (stockError) {
+    console.error('Error deleting stocks:', stockError)
+    return { success: false, error: stockError.message }
+  }
+
+  revalidatePath('/dashboard/stocks')
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
 // ============== STOCK TRANSACTIONS ==============
 
 export async function getStockTransactions() {

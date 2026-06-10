@@ -9,6 +9,7 @@ import { ImportDeGiro } from './import-degiro'
 import { HoldingCard } from './holding-card'
 import { HoldingsTable } from './holdings-table'
 import { fetchStockQuotes, updateStockName, updateStockPrice, deleteAllStockData } from './actions'
+import { convertToEUR } from '@/lib/utils/currency-converter'
 
 type Props = {
   initialStocks: Stock[]
@@ -113,24 +114,24 @@ export function StocksClient({ initialStocks, initialTransactions }: Props) {
     }
   }
 
-  // Calculate portfolio stats
+  // Calculate portfolio stats (everything converted to EUR)
   const totalValue = initialStocks.reduce((sum, stock) => {
     const currentPrice = currentPrices[stock.ticker] || stock.average_cost
-    return sum + (stock.quantity * currentPrice)
+    return sum + convertToEUR(stock.quantity * currentPrice, stock.currency || 'EUR')
   }, 0)
 
   const totalCost = initialStocks.reduce((sum, stock) => {
-    return sum + (stock.quantity * stock.average_cost)
+    return sum + convertToEUR(stock.quantity * stock.average_cost, stock.currency || 'EUR')
   }, 0)
 
   const totalGainLoss = totalValue - totalCost
   const totalGainLossPercentage = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0
 
-  // Calculate total annual dividends
+  // Calculate total annual dividends (converted to EUR)
   const totalAnnualDividends = initialStocks.reduce((sum, stock) => {
     const annualDividend = annualDividends[stock.ticker]
     if (annualDividend) {
-      return sum + (stock.quantity * annualDividend)
+      return sum + convertToEUR(stock.quantity * annualDividend, stock.currency || 'EUR')
     }
     return sum
   }, 0)

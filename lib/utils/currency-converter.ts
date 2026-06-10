@@ -38,7 +38,15 @@ export function getCurrentExchangeRate(currency: string): number {
  * Convert amount from one currency to EUR
  */
 export function convertToEUR(amount: number, fromCurrency: string, exchangeRate?: number): number {
-  const currency = fromCurrency.toUpperCase().trim()
+  const raw = fromCurrency.trim()
+
+  // London quotes (Yahoo) are in pence: GBp/GBX = 1/100 GBP
+  if (raw === 'GBp' || raw.toUpperCase() === 'GBX') {
+    const rate = exchangeRate ?? getCurrentExchangeRate('GBP')
+    return (amount / 100) * rate
+  }
+
+  const currency = raw.toUpperCase()
   
   // Already EUR
   if (currency === 'EUR' || currency === '€') {

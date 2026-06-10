@@ -399,6 +399,88 @@ export async function importDeGiroTransactions(
   return { success: true, imported, duplicates }
 }
 
+/** Best-guess currency from a Yahoo ticker suffix */
+function tickerCurrency(ticker: string): string {
+  const suffixMap: Record<string, string> = {
+    '.AS': 'EUR', '.PA': 'EUR', '.BR': 'EUR', '.DE': 'EUR', '.F': 'EUR',
+    '.MC': 'EUR', '.MI': 'EUR', '.LS': 'EUR',
+    '.L': 'GBP', '.SW': 'CHF', '.ST': 'SEK', '.CO': 'DKK', '.OL': 'NOK', '.TO': 'CAD',
+  }
+  const dotIndex = ticker.lastIndexOf('.')
+  if (dotIndex === -1) return 'USD' // No suffix = US exchange
+  return suffixMap[ticker.substring(dotIndex)] ?? 'EUR'
+}
+
+export type DeGiroPortfolioImportItem = {
+  ticker: string
+  name: string
+  quantity: number
+  averageCost: number
+  currentPrice: number | null
+}
+
+export async function importDeGiroPortfolio(
+  items: DeGiroPortfolioImportItem[]
+): Promise<DeGiroImportResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  let imported = 0
+
+  for (const item of items) {
+    const ticker = item.ticker.trim().toUpperCase()
+    if (!ticker || item.quantity <= 0) continue
+
+    const currency = tickerCurrency(ticker)
+
+    const { data: existing } = await supabase
+      .from('stocks')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('ticker', ticker)
+      .maybeSingle()
+
+    if (existing) {
+      const { error } = await supabase
+        .from('stocks')
+        .update({
+          quantity: item.quantity,
+          average_cost: item.averageCost,
+          current_price: item.currentPrice,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+
+      if (error) {
+        console.error('Error updating holding:', error)
+        return { success: false, error: `Import mislukt voor ${ticker}: ${error.message}` }
+      }
+    } else {
+      const { error } = await supabase.from('stocks').insert({
+        user_id: user.id,
+        ticker,
+        name: item.name || ticker,
+        quantity: item.quantity,
+        average_cost: item.averageCost,
+        current_price: item.currentPrice,
+        currency,
+      })
+
+      if (error) {
+        console.error('Error inserting holding:', error)
+        return { success: false, error: `Import mislukt voor ${ticker}: ${error.message}` }
+      }
+    }
+
+    imported++
+  }
+
+  revalidatePath('/dashboard/stocks')
+  revalidatePath('/dashboard')
+  return { success: true, imported, duplicates: 0 }
+}
+
 /**
  * Rebuild a stock position from all its buy/sell transactions (chronological,
  * average cost method). Used after bulk imports.

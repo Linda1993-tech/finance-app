@@ -41,6 +41,22 @@ export type DeGiroParseResult = {
   error?: string
 }
 
+export type DeGiroHolding = {
+  product: string
+  symbolOrIsin: string
+  suggestedTicker: string
+  quantity: number
+  /** Closing price from the export (local currency) */
+  closingPrice: number
+  valueEur: number
+}
+
+export type DeGiroPortfolioParseResult = {
+  success: boolean
+  holdings?: DeGiroHolding[]
+  error?: string
+}
+
 /** DeGiro "Beurs" / "Reference exchange" codes → Yahoo Finance ticker suffix */
 const EXCHANGE_SUFFIX: Record<string, string> = {
   EAM: '.AS', // Euronext Amsterdam
@@ -83,6 +99,41 @@ function suggestTicker(product: string, exchange: string): string {
     .split(/\s+/)[0] || ''
 
   return firstWord ? `${firstWord.substring(0, 8)}${suffix}` : ''
+}
+
+const ISIN_PATTERN = /^[A-Z]{2}[A-Z0-9]{9}\d$/
+
+/** ISIN country code → likely Yahoo suffix (best guess, user can correct) */
+const ISIN_COUNTRY_SUFFIX: Record<string, string> = {
+  NL: '.AS',
+  FR: '.PA',
+  BE: '.BR',
+  DE: '.DE',
+  ES: '.MC',
+  IT: '.MI',
+  GB: '.L',
+  CH: '.SW',
+  PT: '.LS',
+  SE: '.ST',
+  DK: '.CO',
+  NO: '.OL',
+  IE: '.AS', // Irish ISINs are usually ETFs traded on Euronext Amsterdam
+}
+
+function suggestTickerFromSymbol(symbolOrIsin: string, product: string): string {
+  const value = symbolOrIsin.trim().toUpperCase()
+
+  if (ISIN_PATTERN.test(value)) {
+    const suffix = ISIN_COUNTRY_SUFFIX[value.substring(0, 2)] ?? ''
+    const firstWord = product
+      .toUpperCase()
+      .replace(/[^A-Z0-9\s]/g, '')
+      .trim()
+      .split(/\s+/)[0] || ''
+    return firstWord ? `${firstWord.substring(0, 8)}${suffix}` : ''
+  }
+
+  return value
 }
 
 export function parseDeGiroCSV(fileContent: string): DeGiroParseResult {
@@ -182,6 +233,78 @@ export function parseDeGiroCSV(fileContent: string): DeGiroParseResult {
     return { success: true, products }
   } catch (err) {
     console.error('DeGiro parse error:', err)
+    return { success: false, error: 'Kon het CSV-bestand niet lezen' }
+  }
+}
+
+/**
+ * Parse the DeGiro "Portfolio" export (current holdings snapshot).
+ * Columns: Product, Symbool/ISIN, Aantal, Slotkoers, Lokale waarde, Waarde in EUR
+ */
+export function parseDeGiroPortfolioCSV(fileContent: string): DeGiroPortfolioParseResult {
+  try {
+    const result = Papa.parse<string[]>(fileContent, {
+      skipEmptyLines: true,
+    })
+
+    const rows = result.data
+    if (!rows || rows.length < 2) {
+      return { success: false, error: 'Bestand bevat geen posities' }
+    }
+
+    const headers = rows[0].map((h) => h.trim())
+
+    const productCol = findColumn(headers, ['product'])
+    const symbolCol = findColumn(headers, ['symbool/isin', 'symbol/isin', 'symbool', 'symbol'])
+    const quantityCol = findColumn(headers, ['aantal', 'amount', 'quantity'])
+    const priceCol = findColumn(headers, ['slotkoers', 'closing'])
+    const valueEurCol = findColumn(headers, ['waarde in eur', 'value in eur', 'waarde', 'value'])
+
+    if (productCol === -1 || quantityCol === -1) {
+      return {
+        success: false,
+        error: `Geen Portfolio-export herkend. Gevonden kolommen: ${headers.filter(Boolean).join(', ')}`,
+      }
+    }
+
+    const holdings: DeGiroHolding[] = []
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i]
+      try {
+        const product = row[productCol]?.trim()
+        if (!product) continue
+
+        // Skip cash rows (e.g. "CASH & CASH FUND & FTX CASH (EUR)")
+        if (product.toUpperCase().includes('CASH')) continue
+
+        const quantity = parseAmount(row[quantityCol]?.trim() || '0')
+        if (!quantity || isNaN(quantity) || quantity <= 0) continue
+
+        const symbolOrIsin = symbolCol !== -1 ? row[symbolCol]?.trim() || '' : ''
+        const closingPrice = priceCol !== -1 ? parseAmount(row[priceCol]?.trim() || '0') || 0 : 0
+        const valueEur = valueEurCol !== -1 ? parseAmount(row[valueEurCol]?.trim() || '0') || 0 : 0
+
+        holdings.push({
+          product,
+          symbolOrIsin,
+          suggestedTicker: suggestTickerFromSymbol(symbolOrIsin, product),
+          quantity,
+          closingPrice,
+          valueEur,
+        })
+      } catch {
+        continue
+      }
+    }
+
+    if (holdings.length === 0) {
+      return { success: false, error: 'Geen geldige posities gevonden in het bestand' }
+    }
+
+    return { success: true, holdings }
+  } catch (err) {
+    console.error('DeGiro portfolio parse error:', err)
     return { success: false, error: 'Kon het CSV-bestand niet lezen' }
   }
 }

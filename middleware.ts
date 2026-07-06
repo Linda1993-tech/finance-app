@@ -11,7 +11,14 @@ export async function middleware(request: NextRequest) {
   // MIDDLEWARE_INVOCATION_TIMEOUT when Auth is slow or unreachable.
   // Session refresh for / and /login happens in Server Components / client instead.
   // /auth/* handles email confirmation callbacks and must run before any session exists.
-  if (pathname === '/' || pathname === '/login' || pathname.startsWith('/auth')) {
+  // /api/keep-alive is the Vercel cron that pings Supabase; it must never be
+  // redirected to /login or the free-tier project gets paused for inactivity.
+  if (
+    pathname === '/' ||
+    pathname === '/login' ||
+    pathname.startsWith('/auth') ||
+    pathname === '/api/keep-alive'
+  ) {
     return NextResponse.next()
   }
 
